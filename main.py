@@ -103,7 +103,9 @@ class Ship(pygame.sprite.Sprite):
         if not pygame.sprite.collide_mask(self, self.base):
             self.rect.x = args[0]
             self.rect.y = args[1]
+            self.stop = False
         else:
+            self.stop = True
             old_x = self.rect.x
             old_y = self.rect.y
             self.rect.x = args[0]
@@ -115,6 +117,8 @@ class Ship(pygame.sprite.Sprite):
 
 class Bullet(pygame.sprite.Sprite):
     image = pygame.transform.scale(load_image('other/laserRed.png'), (7, 50))
+    sound_of_gun = pygame.mixer.Sound('sound/gun/laser-gun-single-shot_zyz4u34u.mp3')
+    sound_of_gun.set_volume(0.25)
 
     def __init__(self, *group, args):
         super().__init__(*group)
@@ -123,6 +127,7 @@ class Bullet(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = args[0] + Ship.image.get_size()[0] // 2 - 3
         self.rect.y = args[1] - Ship.image.get_size()[1]
+        Bullet.sound_of_gun.play()
 
     def update(self):
         self.rect = self.rect.move(0, -self.speed)
@@ -164,6 +169,9 @@ class Meteor(pygame.sprite.Sprite):
 
     def __init__(self, *group, bullets, base, ship):
         super().__init__(*group)
+        self.sound_of_crack = pygame.mixer.Sound(
+            'sound/boom/142015__herbertboland__1distantcrack2.mp3')
+        self.sound_of_crack.set_volume(0.5)
         self.image = Meteor.images[0]
         self.rect = self.image.get_rect()
         self.bullets = bullets
@@ -172,8 +180,8 @@ class Meteor(pygame.sprite.Sprite):
         self.ship = ship
         self.rect.x = randint(800, 900)
         self.rect.y = randint(-100, 50)
-        self.vx = randint(-4, -1)
-        self.vy = randint(1, 4)
+        self.vx = randint(-5, -3)
+        self.vy = randint(3, 5)
 
     def update(self):
         self.count += 1
@@ -182,14 +190,17 @@ class Meteor(pygame.sprite.Sprite):
         self.image = Meteor.images[self.count]
         self.rect = self.rect.move(self.vx, self.vy)
         if pygame.sprite.collide_mask(self, self.base):
+            self.sound_of_crack.play()
             self.base.health -= 1
             self.kill()
             if self.base.health == 0:
                 self.base.death = True
         if pygame.sprite.spritecollideany(self, self.bullets):
+            self.sound_of_crack.play()
             self.kill()
             pygame.sprite.spritecollide(self, self.bullets, True)
         if pygame.sprite.collide_mask(self, self.ship):
+            self.sound_of_crack.play()
             self.ship.health -= 1
             self.kill()
 
@@ -249,7 +260,7 @@ def start_game():
     # Музыка
     pygame.mixer.music.load('music/audioblocks-80-s-dreamwave-logo_rS6JYzJfU_WM.mp3')
     pygame.mixer.music.play()
-    pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.set_volume(0.4)
     # Основной цикл
     while running:
         for event in pygame.event.get():
@@ -273,7 +284,7 @@ def start_game():
             f = True
         if pygame.time.get_ticks() % 1000 in range(-100, 100):
             SpeedLine(all_sprites)
-        if pygame.time.get_ticks() % 1000 in range(-50, 50) and game_on:
+        if pygame.time.get_ticks() % 1000 in range(-75, 75) and game_on:
             Meteor(all_sprites, base=base, ship=ship, bullets=bullets)
         screen.blit(fon, (0, 0))
         x1 -= speed
@@ -303,6 +314,7 @@ def start_game():
 
 
 if __name__ == '__main__':
+    pygame.mixer.pre_init(44100, -16, 1, 512)
     start_screen()
     start_game()
     terminate()
