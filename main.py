@@ -2,6 +2,7 @@ import pygame
 import sys
 import os
 from random import choice, randint
+import time
 
 pygame.init()
 size = WIDTH, HEIGHT = 900, 500
@@ -72,6 +73,7 @@ def start_screen():
 
 
 class Ship(pygame.sprite.Sprite):
+    death_sound = pygame.mixer.Sound('sound/ship/bomb-sound-effect.mp3')
     image = pygame.transform.scale(load_image('other/player.png'), (50, 38))
     image_right = pygame.transform.scale(load_image('other/playerRight.png'), (50, 38))
     image_left = pygame.transform.scale(load_image('other/playerLeft.png'), (50, 38))
@@ -93,6 +95,7 @@ class Ship(pygame.sprite.Sprite):
         if self.health == 1:
             self.image = Ship.image_damaged_ship
         elif self.health == 0:
+            Ship.death_sound.play()
             self.death = True
         elif args[0] > self.rect.x:
             self.image = Ship.image_right
@@ -134,6 +137,7 @@ class Bullet(pygame.sprite.Sprite):
 
 
 class Base(pygame.sprite.Sprite):
+    sound_of_crack = pygame.mixer.Sound('sound/ship/zvuk-srednego-vzryiva-6952.mp3')
     image = pygame.transform.flip(load_image('other/base/wship1.png'), True, False)
 
     def __init__(self, *group):
@@ -160,6 +164,8 @@ class SpeedLine(pygame.sprite.Sprite):
 
 
 class Meteor(pygame.sprite.Sprite):
+    score = 0
+    win = False
     images = list()
     for i in range(60):
         if not i >= 10:
@@ -195,10 +201,14 @@ class Meteor(pygame.sprite.Sprite):
             self.kill()
             if self.base.health == 0:
                 self.base.death = True
+                Base.sound_of_crack.play()
         if pygame.sprite.spritecollideany(self, self.bullets):
+            Meteor.score += 1
             self.sound_of_crack.play()
             self.kill()
             pygame.sprite.spritecollide(self, self.bullets, True)
+            if Meteor.score == 20:
+                Meteor.win = True
         if pygame.sprite.collide_mask(self, self.ship):
             self.sound_of_crack.play()
             self.ship.health -= 1
@@ -239,6 +249,7 @@ def start_game():
     level = 1
     f = False
     game_on = False
+    win = False
     speed = 0
     end_on = False
     # Отслеживание времени
@@ -261,6 +272,9 @@ def start_game():
     pygame.mixer.music.load('music/audioblocks-80-s-dreamwave-logo_rS6JYzJfU_WM.mp3')
     pygame.mixer.music.play()
     pygame.mixer.music.set_volume(0.4)
+    # Звуки
+    win_sound = pygame.mixer.Sound(
+        'sound/ship/456968__funwithsound__success-resolution-video-game-fanfare-sound-effect.mp3')
     # Основной цикл
     while running:
         for event in pygame.event.get():
@@ -277,15 +291,22 @@ def start_game():
         if ship.death or base.death:
             end_on = True
             running = False
-
+        if Meteor.win:
+            pygame.mixer.music.load(
+                'sound/ship/456968__funwithsound__success-resolution-video-game-fanfare-sound-effect.mp3')
+            pygame.mixer.music.play()
+            Meteor.win = False
+            # running = False
         if pygame.time.get_ticks() > 28000 and not f:
             pygame.mixer.music.load('music/bensound-scifi.mp3')
             pygame.mixer.music.play()
             f = True
         if pygame.time.get_ticks() % 1000 in range(-100, 100):
             SpeedLine(all_sprites)
-        if pygame.time.get_ticks() % 1000 in range(-75, 75) and game_on:
+        if pygame.time.get_ticks() % 1000 in range(-60, 60) and game_on:
             Meteor(all_sprites, base=base, ship=ship, bullets=bullets)
+        print(ship.health)
+
         screen.blit(fon, (0, 0))
         x1 -= speed
         x2 -= speed
