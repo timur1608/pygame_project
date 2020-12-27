@@ -2,7 +2,6 @@ import pygame
 import sys
 import os
 from random import choice, randint
-import time
 
 pygame.init()
 size = WIDTH, HEIGHT = 900, 500
@@ -79,9 +78,12 @@ class Ship(pygame.sprite.Sprite):
     image_left = pygame.transform.scale(load_image('other/playerLeft.png'), (50, 38))
     image_damaged_ship = pygame.transform.scale(load_image('other/playerDamaged.png'), (50, 38))
 
-    def __init__(self, *group, base):
+    def __init__(self, *group, base, horizontal_borders, vertical_borders):
         super().__init__(*group)
+        self.vertical_borders = vertical_borders
+        self.horizontal_borders = horizontal_borders
         self.base = base
+        self.count = 0
         self.death = False
         self.image = Ship.image
         self.stop = False
@@ -92,18 +94,15 @@ class Ship(pygame.sprite.Sprite):
         self.health = 2
 
     def move(self, args):
-        if self.health == 1:
-            self.image = Ship.image_damaged_ship
-        elif self.health == 0:
-            Ship.death_sound.play()
-            self.death = True
-        elif args[0] > self.rect.x:
+        if args[0] > self.rect.x:
             self.image = Ship.image_right
         elif args[0] == self.rect.x:
             self.image = Ship.image
         elif args[0] < self.rect.x:
             self.image = Ship.image_left
-        if not pygame.sprite.collide_mask(self, self.base):
+        if not pygame.sprite.collide_mask(self, self.base) and not pygame.sprite.spritecollideany(
+                self, self.horizontal_borders) and not pygame.sprite.spritecollideany(self,
+                                                                                      self.vertical_borders):
             self.rect.x = args[0]
             self.rect.y = args[1]
             self.stop = False
@@ -113,9 +112,17 @@ class Ship(pygame.sprite.Sprite):
             old_y = self.rect.y
             self.rect.x = args[0]
             self.rect.y = args[1]
-            if pygame.sprite.collide_mask(self, self.base):
+            if pygame.sprite.collide_mask(self, self.base) or pygame.sprite.spritecollideany(self,
+                                                                                             self.horizontal_borders) or pygame.sprite.spritecollideany(
+                self, self.vertical_borders):
                 self.rect.x = old_x
                 self.rect.y = old_y
+
+    def drawhp(self):
+        for _ in range(self.health):
+            pygame.draw.rect(screen, 'green', (800 + self.count, 450, 20, 20))
+            self.count += 20
+        self.count = 0
 
 
 class Bullet(pygame.sprite.Sprite):
@@ -145,8 +152,15 @@ class Base(pygame.sprite.Sprite):
         self.death = False
         self.image = Base.image
         self.rect = self.image.get_rect()
+        self.count = 0
         self.health = 5
         self.rect.y = 150
+
+    def drawhp(self):
+        for _ in range(self.health):
+            pygame.draw.rect(screen, 'green', (5 + self.count, 130, 20, 20))
+            self.count += 20
+        self.count = 0
 
 
 class SpeedLine(pygame.sprite.Sprite):
@@ -184,7 +198,7 @@ class Meteor(pygame.sprite.Sprite):
         self.base = base
         self.count = 0
         self.ship = ship
-        self.rect.x = randint(800, 900)
+        self.rect.x = randint(650, 900)
         self.rect.y = randint(-100, 50)
         self.vx = randint(-5, -3)
         self.vy = randint(3, 5)
@@ -231,19 +245,34 @@ class GameOverScreen(pygame.sprite.Sprite):
 
 
 class HorizonalBorders(pygame.sprite.Sprite):
-    def __init__(self, *group):
+    def __init__(self, *group, direction):
         super().__init__(*group)
         self.image = pygame.Surface((1, HEIGHT))
-        self.rect = pygame.Rect(WIDTH - 1, 0, 5, HEIGHT)
+        if direction == 'right':
+            self.rect = pygame.Rect(WIDTH - 1, 0, 1, HEIGHT)
+        elif direction == 'left':
+            self.rect = pygame.Rect(0, 0, 1, HEIGHT)
 
 
-def start_game():
+class VerticalBorders(pygame.sprite.Sprite):
+    def __init__(self, *group, direction):
+        super().__init__(*group)
+        self.image = pygame.Surface((WIDTH, 1))
+        if direction == 'up':
+            self.rect = pygame.Rect(0, 0, WIDTH, 1)
+        elif direction == 'down':
+            self.rect = pygame.Rect(0, HEIGHT - 1, WIDTH, 1)
+
+
+def start_level_1():
     # Переменные
     x1 = 0
     x2 = 200
     # Группы спрайтов
     all_sprites = pygame.sprite.Group()
     bullets = pygame.sprite.Group()
+    horizontal_borders = pygame.sprite.Group()
+    vertical_borders = pygame.sprite.Group()
     # Флаги
     running = True
     level = 1
@@ -254,15 +283,27 @@ def start_game():
     end_on = False
     # Отслеживание времени
     clock = pygame.time.Clock()
+    # Границы
+    horizontal_border_1 = HorizonalBorders(all_sprites, direction='right')
+    vertical_border_1 = VerticalBorders(all_sprites, direction='up')
+    horizontal_border_2 = HorizonalBorders(all_sprites, direction='left')
+    vertical_border_2 = VerticalBorders(all_sprites, direction='down')
+    horizontal_borders.add(horizontal_border_1)
+    horizontal_borders.add(horizontal_border_2)
+    vertical_borders.add(vertical_border_1)
+    vertical_borders.add(vertical_border_2)
     # Перманентные объекты
-    horizontal_borders = HorizonalBorders(all_sprites)
     base = Base(all_sprites)
-    ship = Ship(all_sprites, base=base)
+    ship = Ship(all_sprites, base=base, horizontal_borders=horizontal_borders,
+                vertical_borders=vertical_borders)
     # Надписи на экране
     level_text = ['Защитите торговый корабль от метеоритов',
-                  ]
+                  'Здоровье:', 'Прочность корабля:']
     font = pygame.font.SysFont('comicsansms', 30)
+    font_2 = pygame.font.SysFont('comicsansms', 25)
     string = f'Уровень {level}'
+    health_ship = font.render(level_text[1], True, pygame.Color('#C0C0C0'))
+    health_base = font_2.render(level_text[2], True, pygame.Color('#C0C0C0'))
     warning = 'Нажмите Space, чтобы начать'
     warning = font.render(warning, True, pygame.Color('#C0C0C0'))
     string = font.render(string, True, pygame.Color('#C0C0C0'))
@@ -288,6 +329,11 @@ def start_game():
             if game_on and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not ship.stop:
                 bullet = Bullet(all_sprites, args=event.pos)
                 bullets.add(bullet)
+        if ship.health == 1:
+            ship.image = Ship.image_damaged_ship
+        elif ship.health == 0:
+            Ship.death_sound.play()
+            ship.death = True
         if ship.death or base.death:
             end_on = True
             running = False
@@ -305,13 +351,16 @@ def start_game():
             SpeedLine(all_sprites)
         if pygame.time.get_ticks() % 1000 in range(-60, 60) and game_on:
             Meteor(all_sprites, base=base, ship=ship, bullets=bullets)
-        print(ship.health)
 
         screen.blit(fon, (0, 0))
         x1 -= speed
         x2 -= speed
         screen.blit(string, (x1, 0))
         screen.blit(text, (x2, 0))
+        screen.blit(health_ship, (650, 435))
+        screen.blit(health_base, (5, 90))
+        ship.drawhp()
+        base.drawhp()
         if not game_on:
             screen.blit(warning, (250, 250))
         pygame.mouse.set_visible(False)
@@ -320,7 +369,7 @@ def start_game():
         pygame.display.flip()
         clock.tick(FPS)
 
-    end_screen = GameOverScreen(all_sprites, borders=horizontal_borders)
+    end_screen = GameOverScreen(all_sprites, borders=horizontal_border_1)
     pygame.mixer.music.load('music/539674__jhyland__game-over.mp3')
     pygame.mixer.music.play(1)
     while end_on:
@@ -337,5 +386,5 @@ def start_game():
 if __name__ == '__main__':
     pygame.mixer.pre_init(44100, -16, 1, 512)
     start_screen()
-    start_game()
+    start_level_1()
     terminate()
