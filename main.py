@@ -178,8 +178,6 @@ class SpeedLine(pygame.sprite.Sprite):
 
 
 class Meteor(pygame.sprite.Sprite):
-    score = 0
-    win = False
     images = list()
     for i in range(60):
         if not i >= 10:
@@ -217,12 +215,9 @@ class Meteor(pygame.sprite.Sprite):
                 self.base.death = True
                 Base.sound_of_crack.play()
         if pygame.sprite.spritecollideany(self, self.bullets):
-            Meteor.score += 1
             self.sound_of_crack.play()
             self.kill()
             pygame.sprite.spritecollide(self, self.bullets, True)
-            if Meteor.score == 20:
-                Meteor.win = True
         if pygame.sprite.collide_mask(self, self.ship):
             self.sound_of_crack.play()
             self.ship.health -= 1
@@ -268,6 +263,7 @@ def start_level_1():
     # Переменные
     x1 = 0
     x2 = 200
+    x3 = 900
     # Группы спрайтов
     all_sprites = pygame.sprite.Group()
     bullets = pygame.sprite.Group()
@@ -337,11 +333,10 @@ def start_level_1():
         if ship.death or base.death:
             end_on = True
             running = False
-        if Meteor.win:
+        if win:
             pygame.mixer.music.load(
                 'sound/ship/456968__funwithsound__success-resolution-video-game-fanfare-sound-effect.mp3')
             pygame.mixer.music.play()
-            Meteor.win = False
             # running = False
         if pygame.time.get_ticks() > 28000 and not f:
             pygame.mixer.music.load('music/bensound-scifi.mp3')
@@ -353,9 +348,19 @@ def start_level_1():
             Meteor(all_sprites, base=base, ship=ship, bullets=bullets)
 
         screen.blit(fon, (0, 0))
-        x1 -= speed
-        x2 -= speed
+        if x1 + WIDTH > 0:
+            x1 -= speed
+            x2 -= speed
+        if x3 > 0:
+            x3 -= speed
         screen.blit(string, (x1, 0))
+        if game_on:
+            time = pygame.time.get_ticks()
+            timer = f'Осталось еще продержаться: {60 - time // 1000}'
+            timer = font.render(timer, True, pygame.Color('#C0C0C0'))
+            screen.blit(timer, (x3, 0))
+            if 5 - time // 1000 == 0:
+                win = True
         screen.blit(text, (x2, 0))
         screen.blit(health_ship, (650, 435))
         screen.blit(health_base, (5, 90))
