@@ -75,11 +75,12 @@ class Ship(pygame.sprite.Sprite):
     image = pygame.transform.scale(load_image('other/player.png'), (50, 38))
     image_right = pygame.transform.scale(load_image('other/playerRight.png'), (50, 38))
     image_left = pygame.transform.scale(load_image('other/playerLeft.png'), (50, 38))
-    # image_damaged_ship = pygame.transform.scale('other/player')
+    image_damaged_ship = pygame.transform.scale(load_image('other/playerDamaged.png'), (50, 38))
 
     def __init__(self, *group, base):
         super().__init__(*group)
         self.base = base
+        self.death = False
         self.image = Ship.image
         self.stop = False
         self.rect = self.image.get_rect()
@@ -89,14 +90,17 @@ class Ship(pygame.sprite.Sprite):
         self.health = 2
 
     def move(self, args):
-        if args[0] > self.rect.x:
+        if self.health == 1:
+            self.image = Ship.image_damaged_ship
+        elif self.health == 0:
+            self.death = True
+        elif args[0] > self.rect.x:
             self.image = Ship.image_right
         elif args[0] == self.rect.x:
             self.image = Ship.image
         elif args[0] < self.rect.x:
             self.image = Ship.image_left
         if not pygame.sprite.collide_mask(self, self.base):
-            self.stop = False
             self.rect.x = args[0]
             self.rect.y = args[1]
         else:
@@ -107,7 +111,6 @@ class Ship(pygame.sprite.Sprite):
             if pygame.sprite.collide_mask(self, self.base):
                 self.rect.x = old_x
                 self.rect.y = old_y
-            self.stop = True
 
 
 class Bullet(pygame.sprite.Sprite):
@@ -130,8 +133,10 @@ class Base(pygame.sprite.Sprite):
 
     def __init__(self, *group):
         super().__init__(*group)
+        self.death = False
         self.image = Base.image
         self.rect = self.image.get_rect()
+        self.health = 5
         self.rect.y = 150
 
 
@@ -157,11 +162,13 @@ class Meteor(pygame.sprite.Sprite):
         else:
             images.append(load_image(f'other/meteors/Asteroid-A-10-{i}.png'))
 
-    def __init__(self, *group, base, ship):
+    def __init__(self, *group, bullets, base, ship):
         super().__init__(*group)
         self.image = Meteor.images[0]
         self.rect = self.image.get_rect()
+        self.bullets = bullets
         self.base = base
+        self.count = 0
         self.ship = ship
         self.rect.x = randint(800, 900)
         self.rect.y = randint(-100, 50)
@@ -169,27 +176,64 @@ class Meteor(pygame.sprite.Sprite):
         self.vy = randint(1, 4)
 
     def update(self):
+        self.count += 1
+        if self.count >= len(Meteor.images):
+            self.count = 0
+        self.image = Meteor.images[self.count]
         self.rect = self.rect.move(self.vx, self.vy)
-        if pygame.sprite.collide_mask(self, self.base) or pygame.sprite.collide_mask(self, self.ship):
+        if pygame.sprite.collide_mask(self, self.base):
+            self.base.health -= 1
+            self.kill()
+            if self.base.health == 0:
+                self.base.death = True
+        if pygame.sprite.spritecollideany(self, self.bullets):
+            self.kill()
+            pygame.sprite.spritecollide(self, self.bullets, True)
+        if pygame.sprite.collide_mask(self, self.ship):
             self.ship.health -= 1
             self.kill()
+
+
+class GameOverScreen(pygame.sprite.Sprite):
+    image = pygame.transform.scale(load_image('gameover.png'), (WIDTH, HEIGHT))
+
+    def __init__(self, *group, borders):
+        super().__init__(*group)
+        self.borders = borders
+        self.image = GameOverScreen.image
+        self.rect = self.image.get_rect()
+        self.rect.x = 0 - WIDTH
+
+    def update(self):
+        if not pygame.sprite.collide_mask(self, self.borders):
+            self.rect = self.rect.move(10, 0)
+
+
+class HorizonalBorders(pygame.sprite.Sprite):
+    def __init__(self, *group):
+        super().__init__(*group)
+        self.image = pygame.Surface((1, HEIGHT))
+        self.rect = pygame.Rect(WIDTH - 1, 0, 5, HEIGHT)
 
 
 def start_game():
     # Переменные
     x1 = 0
     x2 = 200
-    # Группа всех спрайтов
+    # Группы спрайтов
     all_sprites = pygame.sprite.Group()
+    bullets = pygame.sprite.Group()
     # Флаги
     running = True
     level = 1
     f = False
     game_on = False
     speed = 0
+    end_on = False
     # Отслеживание времени
     clock = pygame.time.Clock()
     # Перманентные объекты
+    horizontal_borders = HorizonalBorders(all_sprites)
     base = Base(all_sprites)
     ship = Ship(all_sprites, base=base)
     # Надписи на экране
@@ -217,7 +261,12 @@ def start_game():
                 game_on = True
                 speed = 3
             if game_on and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not ship.stop:
-                Bullet(all_sprites, args=event.pos)
+                bullet = Bullet(all_sprites, args=event.pos)
+                bullets.add(bullet)
+        if ship.death or base.death:
+            end_on = True
+            running = False
+
         if pygame.time.get_ticks() > 28000 and not f:
             pygame.mixer.music.load('music/bensound-scifi.mp3')
             pygame.mixer.music.play()
@@ -225,7 +274,7 @@ def start_game():
         if pygame.time.get_ticks() % 1000 in range(-100, 100):
             SpeedLine(all_sprites)
         if pygame.time.get_ticks() % 1000 in range(-50, 50) and game_on:
-            Meteor(all_sprites, base=base, ship=ship)
+            Meteor(all_sprites, base=base, ship=ship, bullets=bullets)
         screen.blit(fon, (0, 0))
         x1 -= speed
         x2 -= speed
@@ -234,6 +283,19 @@ def start_game():
         if not game_on:
             screen.blit(warning, (250, 250))
         pygame.mouse.set_visible(False)
+        all_sprites.draw(screen)
+        all_sprites.update()
+        pygame.display.flip()
+        clock.tick(FPS)
+
+    end_screen = GameOverScreen(all_sprites, borders=horizontal_borders)
+    pygame.mixer.music.load('music/539674__jhyland__game-over.mp3')
+    pygame.mixer.music.play(1)
+    while end_on:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                end_on = False
+        screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
         all_sprites.update()
         pygame.display.flip()
