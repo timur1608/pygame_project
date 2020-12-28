@@ -1,12 +1,15 @@
 import pygame
+import pygame_gui
 import sys
 import os
 from random import choice, randint
+import time as tm
 
 pygame.init()
 size = WIDTH, HEIGHT = 900, 500
 screen = pygame.display.set_mode((size))
 pygame.display.set_caption('pre_alpha_project')
+manager = pygame_gui.UIManager((WIDTH, HEIGHT))
 FPS = 50
 
 
@@ -80,18 +83,20 @@ class Ship(pygame.sprite.Sprite):
 
     def __init__(self, *group, base, horizontal_borders, vertical_borders):
         super().__init__(*group)
+        self.base = base
+        self.death = False
+        self.stop = False
         self.vertical_borders = vertical_borders
         self.horizontal_borders = horizontal_borders
-        self.base = base
-        self.count = 0
-        self.death = False
         self.image = Ship.image
-        self.stop = False
         self.rect = self.image.get_rect()
+        self.count = 0
         self.rect.x = 430
         self.rect.y = 440
 
         self.health = 2
+        self.damage = 1
+        self.shield = 0
 
     def move(self, args):
         if args[0] > self.rect.x:
@@ -126,6 +131,7 @@ class Ship(pygame.sprite.Sprite):
 
 
 class Bullet(pygame.sprite.Sprite):
+    speed = 8
     image = pygame.transform.scale(load_image('other/laserRed.png'), (7, 50))
     sound_of_gun = pygame.mixer.Sound('sound/gun/laser-gun-single-shot_zyz4u34u.mp3')
     sound_of_gun.set_volume(0.25)
@@ -133,7 +139,7 @@ class Bullet(pygame.sprite.Sprite):
     def __init__(self, *group, args):
         super().__init__(*group)
         self.image = Bullet.image
-        self.speed = 8
+        self.speed = Bullet.speed
         self.rect = self.image.get_rect()
         self.rect.x = args[0] + Ship.image.get_size()[0] // 2 - 3
         self.rect.y = args[1] - Ship.image.get_size()[1]
@@ -198,7 +204,7 @@ class Meteor(pygame.sprite.Sprite):
         self.ship = ship
         self.rect.x = randint(650, 900)
         self.rect.y = randint(-100, 50)
-        self.vx = randint(-5, -3)
+        self.vx = randint(-9, -5)
         self.vy = randint(3, 5)
 
     def update(self):
@@ -259,6 +265,33 @@ class VerticalBorders(pygame.sprite.Sprite):
             self.rect = pygame.Rect(0, HEIGHT - 1, WIDTH, 1)
 
 
+class CongratulationScreen(pygame.sprite.Sprite):
+    def __init__(self, *group, vertical_borders, ship):
+        super().__init__(*group)
+        self.vertical_borders = vertical_borders
+        self.image = pygame.transform.scale(load_image('Background\maxresdefault.jpg'),
+                                            (WIDTH, HEIGHT))
+        self.rect = self.image.get_rect()
+        self.rect.y = 0 - HEIGHT
+        self.ship = ship
+        count = 2
+        strings = ["Поздравляю, вы прошли 1 уровень.",
+                   f'У вас есть {count} очков умений для улучшения корабля']
+        skills = [f'Здоровье: {self.ship.health}', f'Наличие щита: {self.ship.shield}',
+                  f'Скорость снаряда: {Bullet.speed}', f'Урон: {self.ship.damage}']
+        font = pygame.font.SysFont('comicsansms', 30)
+        for i, j in enumerate(strings):
+            string = font.render(j, True, pygame.Color('#C0C0C0'))
+            self.image.blit(string, (100, 125 + i * 30))
+        for i, j in enumerate(skills):
+            string = font.render(j, True, pygame.Color('#C0C0C0'))
+            self.image.blit(string, (100, 190 + i * 30))
+
+    def update(self):
+        if not pygame.sprite.spritecollideany(self, self.vertical_borders):
+            self.rect = self.rect.move(0, 10)
+
+
 def start_level_1():
     # Переменные
     x1 = 0
@@ -275,6 +308,7 @@ def start_level_1():
     f = False
     game_on = False
     win = False
+    first_time = 0
     speed = 0
     end_on = False
     # Отслеживание времени
@@ -325,6 +359,7 @@ def start_level_1():
             if game_on and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not ship.stop:
                 bullet = Bullet(all_sprites, args=event.pos)
                 bullets.add(bullet)
+
         if ship.health == 1:
             ship.image = Ship.image_damaged_ship
         elif ship.health == 0:
@@ -337,7 +372,8 @@ def start_level_1():
             pygame.mixer.music.load(
                 'sound/ship/456968__funwithsound__success-resolution-video-game-fanfare-sound-effect.mp3')
             pygame.mixer.music.play()
-            # running = False
+            win_screen(ship)
+            running = False
         if pygame.time.get_ticks() > 28000 and not f:
             pygame.mixer.music.load('music/bensound-scifi.mp3')
             pygame.mixer.music.play()
@@ -356,10 +392,12 @@ def start_level_1():
         screen.blit(string, (x1, 0))
         if game_on:
             time = pygame.time.get_ticks()
-            timer = f'Осталось еще продержаться: {60 - time // 1000}'
+            if not first_time:
+                first_time = time
+            timer = f'Осталось еще продержаться: {60 - (time - first_time) // 1000}'
             timer = font.render(timer, True, pygame.Color('#C0C0C0'))
             screen.blit(timer, (x3, 0))
-            if 5 - time // 1000 == 0:
+            if 1 - (time - first_time) // 1000 == 0:
                 win = True
         screen.blit(text, (x2, 0))
         screen.blit(health_ship, (650, 435))
@@ -388,8 +426,54 @@ def start_level_1():
         clock.tick(FPS)
 
 
+def win_screen(ship):
+    # Картинки
+    cursor_img = load_image('cursor/arrow.png')
+    # Флаги
+    buttons_on = False
+    running = True
+    # Группы спрайтов
+    all_sprites = pygame.sprite.Group()
+    vertical_borders = pygame.sprite.Group()
+    cursor_group = pygame.sprite.Group()
+    vertical_border = VerticalBorders(all_sprites, direction='down')
+    vertical_borders.add(vertical_border)
+    # Время
+    clock = pygame.time.Clock()
+    # Появление победного экрана
+    winsc = CongratulationScreen(all_sprites, vertical_borders=vertical_borders, ship=ship)
+    while running:
+        time_delta = clock.tick(60) / 1000.0
+        if not buttons_on and pygame.time.get_ticks() > 8000:
+            buttons_on = True
+            attack_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect((450, 400), (100, 50)),
+                text='Next Level',
+                manager=manager
+            )
+            cursor = pygame.sprite.Sprite(cursor_group)
+            cursor.image = cursor_img
+            cursor.rect = cursor_img.get_rect()
+            cursor.rect.x = -100
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            manager.process_events(event)
+            if event.type == pygame.MOUSEMOTION and pygame.time.get_ticks() > 10000:
+                cursor.rect.x = event.pos[0]
+                cursor.rect.y = event.pos[1]
+        manager.update(time_delta)
+        all_sprites.update()
+        all_sprites.draw(screen)
+        manager.draw_ui(screen)
+        cursor_group.draw(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
 if __name__ == '__main__':
     pygame.mixer.pre_init(44100, -16, 1, 512)
     start_screen()
+    tm.sleep(0.1)
     start_level_1()
     terminate()
