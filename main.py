@@ -204,7 +204,7 @@ class Meteor(pygame.sprite.Sprite):
         self.ship = ship
         self.rect.x = randint(650, 900)
         self.rect.y = randint(-100, 50)
-        self.vx = randint(-9, -5)
+        self.vx = randint(-8, -5)
         self.vy = randint(3, 5)
 
     def update(self):
@@ -230,21 +230,6 @@ class Meteor(pygame.sprite.Sprite):
             self.kill()
 
 
-class GameOverScreen(pygame.sprite.Sprite):
-    image = pygame.transform.scale(load_image('gameover.png'), (WIDTH, HEIGHT))
-
-    def __init__(self, *group, borders):
-        super().__init__(*group)
-        self.borders = borders
-        self.image = GameOverScreen.image
-        self.rect = self.image.get_rect()
-        self.rect.x = 0 - WIDTH
-
-    def update(self):
-        if not pygame.sprite.collide_mask(self, self.borders):
-            self.rect = self.rect.move(10, 0)
-
-
 class HorizonalBorders(pygame.sprite.Sprite):
     def __init__(self, *group, direction):
         super().__init__(*group)
@@ -265,6 +250,21 @@ class VerticalBorders(pygame.sprite.Sprite):
             self.rect = pygame.Rect(0, HEIGHT - 1, WIDTH, 1)
 
 
+class GameOverScreen(pygame.sprite.Sprite):
+    image = pygame.transform.scale(load_image('gameover.png'), (WIDTH, HEIGHT))
+
+    def __init__(self, *group, borders):
+        super().__init__(*group)
+        self.borders = borders
+        self.image = GameOverScreen.image
+        self.rect = self.image.get_rect()
+        self.rect.x = 0 - WIDTH
+
+    def update(self):
+        if not pygame.sprite.collide_mask(self, self.borders):
+            self.rect = self.rect.move(10, 0)
+
+
 class CongratulationScreen(pygame.sprite.Sprite):
     def __init__(self, *group, vertical_borders, ship):
         super().__init__(*group)
@@ -272,11 +272,12 @@ class CongratulationScreen(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(load_image('Background\maxresdefault.jpg'),
                                             (WIDTH, HEIGHT))
         self.rect = self.image.get_rect()
+        self.stop = False
         self.rect.y = 0 - HEIGHT
         self.ship = ship
-        count = 2
+        self.count = 2
         strings = ["Поздравляю, вы прошли 1 уровень.",
-                   f'У вас есть {count} очков умений для улучшения корабля']
+                   f'У вас есть {self.count} очков умений для улучшения корабля']
         skills = [f'Здоровье: {self.ship.health}', f'Наличие щита: {self.ship.shield}',
                   f'Скорость снаряда: {Bullet.speed}', f'Урон: {self.ship.damage}']
         font = pygame.font.SysFont('comicsansms', 30)
@@ -290,6 +291,35 @@ class CongratulationScreen(pygame.sprite.Sprite):
     def update(self):
         if not pygame.sprite.spritecollideany(self, self.vertical_borders):
             self.rect = self.rect.move(0, 10)
+        else:
+            self.stop = True
+
+    def refresh(self):
+        screen.blit(self.image, (0, 0))
+        strings = ["Поздравляю, вы прошли 1 уровень.",
+                   f'У вас есть {self.count} очков умений для улучшения корабля']
+        skills = [f'Здоровье: {self.ship.health}', f'Наличие щита: {self.ship.shield}',
+                  f'Скорость снаряда: {Bullet.speed}', f'Урон: {self.ship.damage}']
+        font = pygame.font.SysFont('comicsansms', 30)
+        for i, j in enumerate(strings):
+            string = font.render(j, True, pygame.Color('#C0C0C0'))
+            self.image.blit(string, (100, 125 + i * 30))
+        for i, j in enumerate(skills):
+            string = font.render(j, True, pygame.Color('#C0C0C0'))
+            self.image.blit(string, (100, 190 + i * 30))
+
+
+class Cursor(pygame.sprite.Sprite):
+    def __init__(self, *group):
+        super().__init__(*group)
+        cursor_img = load_image('cursor/arrow.png')
+        self.image = cursor_img
+        self.rect = cursor_img.get_rect()
+        self.rect.x = -100
+
+    def update(self, args):
+        self.rect.x = args[0]
+        self.rect.y = args[1]
 
 
 def start_level_1():
@@ -394,7 +424,7 @@ def start_level_1():
             time = pygame.time.get_ticks()
             if not first_time:
                 first_time = time
-            timer = f'Осталось еще продержаться: {60 - (time - first_time) // 1000}'
+            timer = f'Осталось еще продержаться: {50 - (time - first_time) // 1000}'
             timer = font.render(timer, True, pygame.Color('#C0C0C0'))
             screen.blit(timer, (x3, 0))
             if 1 - (time - first_time) // 1000 == 0:
@@ -427,9 +457,11 @@ def start_level_1():
 
 
 def win_screen(ship):
+    ship.health = 2
     # Флаги
     buttons_on = False
     running = True
+    old_tick = 0
     # Группы спрайтов
     all_sprites = pygame.sprite.Group()
     vertical_borders = pygame.sprite.Group()
@@ -441,22 +473,20 @@ def win_screen(ship):
     # Появление победного экрана
     winsc = CongratulationScreen(all_sprites, vertical_borders=vertical_borders, ship=ship)
     # Новый курсор
-    cursor_img = load_image('cursor/arrow.png')
-    cursor = pygame.sprite.Sprite(cursor_group)
-    cursor.image = cursor_img
-    cursor.rect = cursor_img.get_rect()
-    cursor.rect.x = -100
+    cursor = Cursor(cursor_group)
     # Основной цикл
     while running:
+        if not old_tick:
+            old_tick = pygame.time.get_ticks()
         time_delta = clock.tick(60) / 1000.0
-        if not buttons_on and pygame.time.get_ticks() > 8000:
+        if not buttons_on and pygame.time.get_ticks() - old_tick > 7000:
             buttons_on = True
             next_button = pygame_gui.elements.UIButton(
                 relative_rect=pygame.Rect((400, 400), (100, 50)),
                 text='Next Level',
                 manager=manager
             )
-            attack_button = pygame_gui.elements.UIButton(
+            health_button = pygame_gui.elements.UIButton(
                 relative_rect=pygame.Rect((400, 195), (30, 30)),
                 text='+',
                 manager=manager
@@ -481,12 +511,28 @@ def win_screen(ship):
             if event.type == pygame.QUIT:
                 running = False
             manager.process_events(event)
-            if event.type == pygame.MOUSEMOTION and pygame.time.get_ticks() > 8000:
-                cursor.rect.x = event.pos[0]
-                cursor.rect.y = event.pos[1]
+            if event.type == pygame.MOUSEMOTION and pygame.time.get_ticks() - old_tick > 7000:
+                cursor.update(event.pos)
+            if event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if event.ui_element == health_button:
+                        if winsc.count > 0:
+                            ship.health += 1
+                            winsc.count -= 1
+                            winsc.refresh()
+                    if event.ui_element == speed_button:
+                        if winsc.count > 0:
+                            Bullet.speed += 3
+                            winsc.count -= 1
+                            winsc.refresh()
+                    if event.ui_element == shield_button:
+                        if winsc.count > 0 and ship.shield == 0:
+                            ship.shield = 1
+                            winsc.refresh()
+
         manager.update(time_delta)
-        all_sprites.update()
         all_sprites.draw(screen)
+        all_sprites.update()
         manager.draw_ui(screen)
         cursor_group.draw(screen)
         pygame.display.flip()
