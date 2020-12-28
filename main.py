@@ -427,8 +427,6 @@ def start_level_1():
 
 
 def win_screen(ship):
-    # Картинки
-    cursor_img = load_image('cursor/arrow.png')
     # Флаги
     buttons_on = False
     running = True
@@ -442,24 +440,48 @@ def win_screen(ship):
     clock = pygame.time.Clock()
     # Появление победного экрана
     winsc = CongratulationScreen(all_sprites, vertical_borders=vertical_borders, ship=ship)
+    # Новый курсор
+    cursor_img = load_image('cursor/arrow.png')
+    cursor = pygame.sprite.Sprite(cursor_group)
+    cursor.image = cursor_img
+    cursor.rect = cursor_img.get_rect()
+    cursor.rect.x = -100
+    # Основной цикл
     while running:
         time_delta = clock.tick(60) / 1000.0
         if not buttons_on and pygame.time.get_ticks() > 8000:
             buttons_on = True
-            attack_button = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect((450, 400), (100, 50)),
+            next_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect((400, 400), (100, 50)),
                 text='Next Level',
                 manager=manager
             )
-            cursor = pygame.sprite.Sprite(cursor_group)
-            cursor.image = cursor_img
-            cursor.rect = cursor_img.get_rect()
-            cursor.rect.x = -100
+            attack_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect((400, 195), (30, 30)),
+                text='+',
+                manager=manager
+            )
+            shield_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect((400, 225), (30, 30)),
+                text='+',
+                manager=manager
+            )
+            speed_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect((400, 255), (30, 30)),
+                text='+',
+                manager=manager
+            )
+            damage_button = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect((400, 285), (30, 30)),
+                text='+',
+                manager=manager
+            )
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             manager.process_events(event)
-            if event.type == pygame.MOUSEMOTION and pygame.time.get_ticks() > 10000:
+            if event.type == pygame.MOUSEMOTION and pygame.time.get_ticks() > 8000:
                 cursor.rect.x = event.pos[0]
                 cursor.rect.y = event.pos[1]
         manager.update(time_delta)
