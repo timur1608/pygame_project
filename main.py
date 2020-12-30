@@ -204,7 +204,7 @@ class Meteor(pygame.sprite.Sprite):
         self.ship = ship
         self.rect.x = randint(650, 900)
         self.rect.y = randint(-100, 50)
-        self.vx = randint(-8, -5)
+        self.vx = randint(-9, -6)
         self.vy = randint(3, 5)
 
     def update(self):
@@ -266,10 +266,13 @@ class GameOverScreen(pygame.sprite.Sprite):
 
 
 class CongratulationScreen(pygame.sprite.Sprite):
+    image = load_image('Background\maxresdefault.jpg')
+    count = 2
+
     def __init__(self, *group, vertical_borders, ship):
         super().__init__(*group)
         self.vertical_borders = vertical_borders
-        self.image = pygame.transform.scale(load_image('Background\maxresdefault.jpg'),
+        self.image = pygame.transform.scale(CongratulationScreen.image,
                                             (WIDTH, HEIGHT))
         self.rect = self.image.get_rect()
         self.stop = False
@@ -277,7 +280,7 @@ class CongratulationScreen(pygame.sprite.Sprite):
         self.ship = ship
         self.count = 2
         strings = ["Поздравляю, вы прошли 1 уровень.",
-                   f'У вас есть {self.count} очков умений для улучшения корабля']
+                   f'У вас есть {CongratulationScreen.count} очков умений для улучшения корабля']
         skills = [f'Здоровье: {self.ship.health}', f'Наличие щита: {self.ship.shield}',
                   f'Скорость снаряда: {Bullet.speed}', f'Урон: {self.ship.damage}']
         font = pygame.font.SysFont('comicsansms', 30)
@@ -293,20 +296,6 @@ class CongratulationScreen(pygame.sprite.Sprite):
             self.rect = self.rect.move(0, 10)
         else:
             self.stop = True
-
-    def refresh(self):
-        screen.blit(self.image, (0, 0))
-        strings = ["Поздравляю, вы прошли 1 уровень.",
-                   f'У вас есть {self.count} очков умений для улучшения корабля']
-        skills = [f'Здоровье: {self.ship.health}', f'Наличие щита: {self.ship.shield}',
-                  f'Скорость снаряда: {Bullet.speed}', f'Урон: {self.ship.damage}']
-        font = pygame.font.SysFont('comicsansms', 30)
-        for i, j in enumerate(strings):
-            string = font.render(j, True, pygame.Color('#C0C0C0'))
-            self.image.blit(string, (100, 125 + i * 30))
-        for i, j in enumerate(skills):
-            string = font.render(j, True, pygame.Color('#C0C0C0'))
-            self.image.blit(string, (100, 190 + i * 30))
 
 
 class Cursor(pygame.sprite.Sprite):
@@ -403,7 +392,7 @@ def start_level_1():
                 'sound/ship/456968__funwithsound__success-resolution-video-game-fanfare-sound-effect.mp3')
             pygame.mixer.music.play()
             win_screen(ship)
-            running = False
+            return
         if pygame.time.get_ticks() > 28000 and not f:
             pygame.mixer.music.load('music/bensound-scifi.mp3')
             pygame.mixer.music.play()
@@ -424,10 +413,10 @@ def start_level_1():
             time = pygame.time.get_ticks()
             if not first_time:
                 first_time = time
-            timer = f'Осталось еще продержаться: {50 - (time - first_time) // 1000}'
+            timer = f'Осталось еще продержаться: {60 - (time - first_time) // 1000}'
             timer = font.render(timer, True, pygame.Color('#C0C0C0'))
             screen.blit(timer, (x3, 0))
-            if 1 - (time - first_time) // 1000 == 0:
+            if 60 - (time - first_time) // 1000 == 0:
                 win = True
         screen.blit(text, (x2, 0))
         screen.blit(health_ship, (650, 435))
@@ -519,22 +508,38 @@ def win_screen(ship):
                         if winsc.count > 0:
                             ship.health += 1
                             winsc.count -= 1
-                            winsc.refresh()
+                            print(ship.health)
                     if event.ui_element == speed_button:
                         if winsc.count > 0:
                             Bullet.speed += 3
                             winsc.count -= 1
-                            winsc.refresh()
+                            print(Bullet.speed)
                     if event.ui_element == shield_button:
                         if winsc.count > 0 and ship.shield == 0:
                             ship.shield = 1
-                            winsc.refresh()
+                            print(ship.shield)
+                    if event.ui_element == next_button:
+                        running = False
+                        return
 
         manager.update(time_delta)
         all_sprites.draw(screen)
-        all_sprites.update()
+        if not winsc.stop:
+            all_sprites.update()
         manager.draw_ui(screen)
         cursor_group.draw(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def start_level_2():
+    clock = pygame.time.Clock()
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        screen.fill('black')
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -544,4 +549,5 @@ if __name__ == '__main__':
     start_screen()
     tm.sleep(0.1)
     start_level_1()
+    # start_level_2()
     terminate()
