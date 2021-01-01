@@ -80,6 +80,7 @@ class Ship(pygame.sprite.Sprite):
     image_right = pygame.transform.scale(load_image('other/playerRight.png'), (50, 38))
     image_left = pygame.transform.scale(load_image('other/playerLeft.png'), (50, 38))
     image_damaged_ship = pygame.transform.scale(load_image('other/playerDamaged.png'), (50, 38))
+    shield_image = pygame.transform.scale(load_image('other/shield.png'), (75, 60))
 
     def __init__(self, *group, base=None, horizontal_borders=None, vertical_borders=None):
         super().__init__(*group)
@@ -99,6 +100,8 @@ class Ship(pygame.sprite.Sprite):
         self.shield = 0
 
     def move(self, args):
+        if self.shield:
+            self.image.blit(Ship.shield_image, (0, 0))
         if args[0] > self.rect.x:
             self.image = Ship.image_right
         elif args[0] == self.rect.x:
@@ -106,9 +109,10 @@ class Ship(pygame.sprite.Sprite):
         elif args[0] < self.rect.x:
             self.image = Ship.image_left
         if self.base:
-            if not pygame.sprite.collide_mask(self, self.base) and not pygame.sprite.spritecollideany(
-                    self, self.horizontal_borders) and not pygame.sprite.spritecollideany(self,
-                                                                                          self.vertical_borders):
+            if not pygame.sprite.collide_mask(self,
+                                              self.base) and not pygame.sprite.spritecollideany(
+                self, self.horizontal_borders) and not pygame.sprite.spritecollideany(self,
+                                                                                      self.vertical_borders):
                 self.rect.x = args[0]
                 self.rect.y = args[1]
                 self.stop = False
@@ -118,8 +122,9 @@ class Ship(pygame.sprite.Sprite):
                 old_y = self.rect.y
                 self.rect.x = args[0]
                 self.rect.y = args[1]
-                if pygame.sprite.collide_mask(self, self.base) or pygame.sprite.spritecollideany(self,
-                                                                                                 self.horizontal_borders) or pygame.sprite.spritecollideany(
+                if pygame.sprite.collide_mask(self, self.base) or pygame.sprite.spritecollideany(
+                        self,
+                        self.horizontal_borders) or pygame.sprite.spritecollideany(
                     self, self.vertical_borders):
                     self.rect.x = old_x
                     self.rect.y = old_y
@@ -127,12 +132,16 @@ class Ship(pygame.sprite.Sprite):
             self.rect.x = args[0]
             self.rect.y = args[1]
 
-
     def drawhp(self):
         for _ in range(self.health):
             pygame.draw.rect(screen, 'green', (800 + self.count, 450, 20, 20))
             self.count += 20
         self.count = 0
+
+
+class Shield(pygame.sprite.Sprite):
+    def __init__(self, *group):
+        super().__init__(*group)
 
 
 class Bullet(pygame.sprite.Sprite):
@@ -427,7 +436,7 @@ def start_level_1():
             timer = f'Осталось еще продержаться: {60 - (time - first_time) // 1000}'
             timer = font.render(timer, True, pygame.Color('#C0C0C0'))
             screen.blit(timer, (x3, 0))
-            if 60 - (time - first_time) // 1000 == 0:
+            if 1 - (time - first_time) // 1000 == 0:
                 win = True
         screen.blit(text, (x2, 0))
         screen.blit(health_ship, (650, 435))
@@ -528,6 +537,7 @@ def win_screen(ship):
                     if event.ui_element == shield_button:
                         if winsc.count > 0 and ship.shield == 0:
                             ship.shield = 1
+                            winsc.count -= 1
                             print(ship.shield)
                     if event.ui_element == next_button:
                         running = False
@@ -548,11 +558,21 @@ def start_level_2(ship):
     clock = pygame.time.Clock()
     fon = pygame.transform.scale(load_image('Background/level_2/background_screen.jpg'),
                                  (WIDTH, HEIGHT))
+    # Спрайты
     all_sprites = pygame.sprite.Group()
     bullets = pygame.sprite.Group()
     new_ship = Ship(all_sprites)
-
+    # Улучшения корабля
+    new_ship.health = ship.health
+    new_ship.shield = ship.shield
+    new_ship.damage = ship.damage
+    # Флаги
     running = True
+    # Текст
+    text = 'Здоровье: '
+    font = pygame.font.SysFont('comicsansms', 30)
+    text = font.render(text, True, pygame.Color('#C0C0C0'))
+
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -565,6 +585,8 @@ def start_level_2(ship):
                 bullets.add(bullet_1)
                 bullets.add(bullet_2)
         screen.blit(fon, (0, 0))
+        screen.blit(text, (650, 435))
+        new_ship.drawhp()
         all_sprites.draw(screen)
         all_sprites.update()
         pygame.display.flip()
