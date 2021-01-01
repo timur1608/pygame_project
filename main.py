@@ -81,7 +81,7 @@ class Ship(pygame.sprite.Sprite):
     image_left = pygame.transform.scale(load_image('other/playerLeft.png'), (50, 38))
     image_damaged_ship = pygame.transform.scale(load_image('other/playerDamaged.png'), (50, 38))
 
-    def __init__(self, *group, base, horizontal_borders, vertical_borders):
+    def __init__(self, *group, base=None, horizontal_borders=None, vertical_borders=None):
         super().__init__(*group)
         self.base = base
         self.death = False
@@ -105,23 +105,28 @@ class Ship(pygame.sprite.Sprite):
             self.image = Ship.image
         elif args[0] < self.rect.x:
             self.image = Ship.image_left
-        if not pygame.sprite.collide_mask(self, self.base) and not pygame.sprite.spritecollideany(
-                self, self.horizontal_borders) and not pygame.sprite.spritecollideany(self,
-                                                                                      self.vertical_borders):
-            self.rect.x = args[0]
-            self.rect.y = args[1]
-            self.stop = False
+        if self.base:
+            if not pygame.sprite.collide_mask(self, self.base) and not pygame.sprite.spritecollideany(
+                    self, self.horizontal_borders) and not pygame.sprite.spritecollideany(self,
+                                                                                          self.vertical_borders):
+                self.rect.x = args[0]
+                self.rect.y = args[1]
+                self.stop = False
+            else:
+                self.stop = True
+                old_x = self.rect.x
+                old_y = self.rect.y
+                self.rect.x = args[0]
+                self.rect.y = args[1]
+                if pygame.sprite.collide_mask(self, self.base) or pygame.sprite.spritecollideany(self,
+                                                                                                 self.horizontal_borders) or pygame.sprite.spritecollideany(
+                    self, self.vertical_borders):
+                    self.rect.x = old_x
+                    self.rect.y = old_y
         else:
-            self.stop = True
-            old_x = self.rect.x
-            old_y = self.rect.y
             self.rect.x = args[0]
             self.rect.y = args[1]
-            if pygame.sprite.collide_mask(self, self.base) or pygame.sprite.spritecollideany(self,
-                                                                                             self.horizontal_borders) or pygame.sprite.spritecollideany(
-                self, self.vertical_borders):
-                self.rect.x = old_x
-                self.rect.y = old_y
+
 
     def drawhp(self):
         for _ in range(self.health):
@@ -136,13 +141,17 @@ class Bullet(pygame.sprite.Sprite):
     sound_of_gun = pygame.mixer.Sound('sound/gun/laser-gun-single-shot_zyz4u34u.mp3')
     sound_of_gun.set_volume(0.25)
 
-    def __init__(self, *group, args):
+    def __init__(self, *group, args, direction):
         super().__init__(*group)
         self.image = Bullet.image
         self.speed = Bullet.speed
         self.rect = self.image.get_rect()
-        self.rect.x = args[0] + Ship.image.get_size()[0] // 2 - 3
-        self.rect.y = args[1] - Ship.image.get_size()[1]
+        if direction == 'left':
+            self.rect.x = args[0]
+            self.rect.y = args[1] - Ship.image.get_size()[1]
+        elif direction == 'right':
+            self.rect.x = args[0] + Ship.image.get_size()[0] - 5
+            self.rect.y = args[1] - 40
         Bullet.sound_of_gun.play()
 
     def update(self):
@@ -204,7 +213,7 @@ class Meteor(pygame.sprite.Sprite):
         self.ship = ship
         self.rect.x = randint(650, 900)
         self.rect.y = randint(-100, 50)
-        self.vx = randint(-9, -6)
+        self.vx = randint(-13, -10)
         self.vy = randint(3, 5)
 
     def update(self):
@@ -376,8 +385,10 @@ def start_level_1():
                 game_on = True
                 speed = 3
             if game_on and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not ship.stop:
-                bullet = Bullet(all_sprites, args=event.pos)
-                bullets.add(bullet)
+                bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
+                bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
+                bullets.add(bullet_1)
+                bullets.add(bullet_2)
 
         if ship.health == 1:
             ship.image = Ship.image_damaged_ship
@@ -520,6 +531,7 @@ def win_screen(ship):
                             print(ship.shield)
                     if event.ui_element == next_button:
                         running = False
+                        start_level_2(ship)
                         return
 
         manager.update(time_delta)
@@ -532,14 +544,29 @@ def win_screen(ship):
         clock.tick(FPS)
 
 
-def start_level_2():
+def start_level_2(ship):
     clock = pygame.time.Clock()
+    fon = pygame.transform.scale(load_image('Background/level_2/background_screen.jpg'),
+                                 (WIDTH, HEIGHT))
+    all_sprites = pygame.sprite.Group()
+    bullets = pygame.sprite.Group()
+    new_ship = Ship(all_sprites)
+
     running = True
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        screen.fill('black')
+            if event.type == pygame.MOUSEMOTION:
+                new_ship.move(event.pos)
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
+                bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
+                bullets.add(bullet_1)
+                bullets.add(bullet_2)
+        screen.blit(fon, (0, 0))
+        all_sprites.draw(screen)
+        all_sprites.update()
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -549,5 +576,4 @@ if __name__ == '__main__':
     start_screen()
     tm.sleep(0.1)
     start_level_1()
-    # start_level_2()
     terminate()
