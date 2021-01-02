@@ -4,6 +4,7 @@ import sys
 import os
 from random import choice, randint
 import time as tm
+import math
 
 pygame.init()
 size = WIDTH, HEIGHT = 900, 500
@@ -32,6 +33,11 @@ def load_image(name, colorkey=None):
     else:
         image = image.convert_alpha()
     return image
+
+
+def calculate_angle(x0, y0, x1, y1) -> float:
+    a = (x0 * x1 + y0 * y1) / (math.sqrt(x0 ** 2 + y0 ** 2) * math.sqrt(x1 ** 2 + y1 ** 2))
+    return math.degrees(math.acos(a))
 
 
 def start_screen():
@@ -80,7 +86,6 @@ class Ship(pygame.sprite.Sprite):
     image_right = pygame.transform.scale(load_image('other/playerRight.png'), (50, 38))
     image_left = pygame.transform.scale(load_image('other/playerLeft.png'), (50, 38))
     image_damaged_ship = pygame.transform.scale(load_image('other/playerDamaged.png'), (50, 38))
-    shield_image = pygame.transform.scale(load_image('other/shield.png'), (75, 60))
 
     def __init__(self, *group, base=None, horizontal_borders=None, vertical_borders=None):
         super().__init__(*group)
@@ -92,6 +97,7 @@ class Ship(pygame.sprite.Sprite):
         self.image = Ship.image
         self.rect = self.image.get_rect()
         self.count = 0
+        self.angle = 1
         self.rect.x = 430
         self.rect.y = 440
 
@@ -100,8 +106,6 @@ class Ship(pygame.sprite.Sprite):
         self.shield = 0
 
     def move(self, args):
-        if self.shield:
-            self.image.blit(Ship.shield_image, (0, 0))
         if args[0] > self.rect.x:
             self.image = Ship.image_right
         elif args[0] == self.rect.x:
@@ -129,6 +133,7 @@ class Ship(pygame.sprite.Sprite):
                     self.rect.x = old_x
                     self.rect.y = old_y
         else:
+
             self.rect.x = args[0]
             self.rect.y = args[1]
 
@@ -140,8 +145,16 @@ class Ship(pygame.sprite.Sprite):
 
 
 class Shield(pygame.sprite.Sprite):
+    image = pygame.transform.scale(load_image('other/shield.png'), (75, 60))
+
     def __init__(self, *group):
         super().__init__(*group)
+        self.image = Shield.image
+        self.rect = self.image.get_rect()
+
+    def move(self, args):
+        self.rect.x = args[0] - 13
+        self.rect.y = args[1] - 13
 
 
 class Bullet(pygame.sprite.Sprite):
@@ -165,6 +178,15 @@ class Bullet(pygame.sprite.Sprite):
 
     def update(self):
         self.rect = self.rect.move(0, -self.speed)
+
+
+class BulletOfEnemy(pygame.sprite.Sprite):
+    image = load_image('other/laserGreen.png')
+
+    def __init__(self, *group):
+        super().__init__(*group)
+        self.image = BulletOfEnemy.image
+        self.rect = self.image.get_rect()
 
 
 class Base(pygame.sprite.Sprite):
@@ -199,6 +221,25 @@ class SpeedLine(pygame.sprite.Sprite):
 
     def update(self):
         self.rect = self.rect.move(0, 5)
+
+
+class EnemyShip(pygame.sprite.Sprite):
+    image = pygame.transform.scale(load_image('other/enemyShip.png'), (49, 25))
+
+    def __init__(self, *group, x, y):
+        super().__init__(*group)
+        self.image = EnemyShip.image
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.center = self.rect.center
+        print(self.center)
+
+    def rotate(self, args):
+        angle = calculate_angle(self.rect.x, self.rect.y, args[0], args[1])
+        self.image = pygame.transform.rotate(self.image, angle)
+        self.rect = self.image.get_rect()
+        self.rect.center = self.center
 
 
 class Meteor(pygame.sprite.Sprite):
@@ -419,7 +460,7 @@ def start_level_1():
             f = True
         if pygame.time.get_ticks() % 1000 in range(-100, 100):
             SpeedLine(all_sprites)
-        if pygame.time.get_ticks() % 1000 in range(-60, 60) and game_on:
+        if pygame.time.get_ticks() % 500 in range(-40, 40) and game_on:
             Meteor(all_sprites, base=base, ship=ship, bullets=bullets)
 
         screen.blit(fon, (0, 0))
@@ -539,6 +580,11 @@ def win_screen(ship):
                             ship.shield = 1
                             winsc.count -= 1
                             print(ship.shield)
+                    if event.ui_element == damage_button:
+                        if winsc.count > 0:
+                            winsc.count -= 1
+                            ship.damage += 1
+                            print(ship.damage)
                     if event.ui_element == next_button:
                         running = False
                         start_level_2(ship)
@@ -561,29 +607,45 @@ def start_level_2(ship):
     # Спрайты
     all_sprites = pygame.sprite.Group()
     bullets = pygame.sprite.Group()
+    # Новые объекты
     new_ship = Ship(all_sprites)
     # Улучшения корабля
     new_ship.health = ship.health
     new_ship.shield = ship.shield
     new_ship.damage = ship.damage
+    # Щит
+    if new_ship.shield:
+        shield = Shield(all_sprites)
     # Флаги
     running = True
+    stage1 = True
+    stage2 = False
+    stage3 = False
+    stage4 = False
     # Текст
     text = 'Здоровье: '
     font = pygame.font.SysFont('comicsansms', 30)
     text = font.render(text, True, pygame.Color('#C0C0C0'))
 
     while running:
+        if stage1:
+            enemy1 = EnemyShip(all_sprites, x=40, y=40)
+            enemy2 = EnemyShip(all_sprites, x=400, y=40)
+            enemy3 = EnemyShip(all_sprites, x=820, y=40)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEMOTION:
+                if new_ship.shield:
+                    shield.move(event.pos)
                 new_ship.move(event.pos)
+                enemy1.rotate(event.pos)
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
                 bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
                 bullets.add(bullet_1)
                 bullets.add(bullet_2)
+        # if pygame.time.get_ticks() > 8000
         screen.blit(fon, (0, 0))
         screen.blit(text, (650, 435))
         new_ship.drawhp()
