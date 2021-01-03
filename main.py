@@ -227,12 +227,14 @@ class EnemyShip(pygame.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
         self.orig_image = self.image.copy()
+        self.angle = 0
+        self.orig_center = self.rect.center
 
     def rotate(self, args):
         self.angle = calculate_angle(self.rect.x, self.rect.y, args[0], args[1])
-        orig_center = self.rect.center
+        self.orig_center = self.rect.center
         self.image = pygame.transform.rotate(self.orig_image, self.angle)
-        self.rect = self.image.get_rect(center=orig_center)
+        self.rect = self.image.get_rect(center=self.orig_center)
 
 
 class BulletOfEnemy(pygame.sprite.Sprite):
@@ -244,11 +246,20 @@ class BulletOfEnemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.enemy = enemy
         self.orig_image = self.image.copy()
+        self.angle = enemy.angle
+        self.rect.x = enemy.orig_center[0] + 5
+        self.rect.y = enemy.orig_center[1] - 2
+        self.speed = 7
+        self.vx = math.sin(math.radians(self.angle)) * self.speed
+        self.vy = math.cos(math.radians(self.angle)) * self.speed
 
-    def rotate(self, args):
+    def rotate(self):
         orig_center = self.rect.center
-        self.image = pygame.transform.rotate(self.orig_image, enemy.angle)
+        self.image = pygame.transform.rotate(self.orig_image, self.angle)
         self.rect = self.image.get_rect(center=orig_center)
+
+    def update(self):
+        self.rect = self.rect.move(self.vx, self.vy)
 
 
 class Meteor(pygame.sprite.Sprite):
@@ -631,6 +642,7 @@ def start_level_2(ship):
     stage2 = False
     stage3 = False
     stage4 = False
+    current_time = 0
     # Текст
     text = 'Здоровье: '
     font = pygame.font.SysFont('comicsansms', 30)
@@ -644,6 +656,16 @@ def start_level_2(ship):
             enemy3 = EnemyShip(all_sprites, x=820, y=40)
             stage1 = False
             stage2 = True
+        if stage2:
+            if (pygame.time.get_ticks() - start_time) // 1000 % 1 == 0 and (
+                    pygame.time.get_ticks() - start_time) // 1000 != current_time:
+                current_time = (pygame.time.get_ticks() - start_time) // 1000
+                bullet_enemy_1 = BulletOfEnemy(all_sprites, enemy=enemy1)
+                bullet_enemy_1.rotate()
+                bullet_enemy_2 = BulletOfEnemy(all_sprites, enemy=enemy2)
+                bullet_enemy_2.rotate()
+                bullet_enemy_3 = BulletOfEnemy(all_sprites, enemy=enemy3)
+                bullet_enemy_3.rotate()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -660,9 +682,6 @@ def start_level_2(ship):
                 bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
                 bullets.add(bullet_1)
                 bullets.add(bullet_2)
-            if stage2:
-                if (pygame.time.get_ticks() - start_time) // 1000 % 2 == 0:
-                    bullet_enemy_1 = BulletOfEnemy(all_sprites, enemy=enemy1)
         # if pygame.time.get_ticks() > 8000
         screen.blit(fon, (0, 0))
         screen.blit(text, (650, 435))
