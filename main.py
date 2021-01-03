@@ -36,8 +36,11 @@ def load_image(name, colorkey=None):
 
 
 def calculate_angle(x0, y0, x1, y1) -> float:
-    a = (x0 * x1 + y0 * y1) / (math.sqrt(x0 ** 2 + y0 ** 2) * math.sqrt(x1 ** 2 + y1 ** 2))
-    return math.degrees(math.acos(a))
+    a = abs(x0 - x1) / math.sqrt(abs(x0 - x1) ** 2 + abs(y0 - y1) ** 2)
+    if x0 >= x1:
+        return math.degrees(math.asin(-a))
+    else:
+        return math.degrees(math.asin(a))
 
 
 def start_screen():
@@ -180,15 +183,6 @@ class Bullet(pygame.sprite.Sprite):
         self.rect = self.rect.move(0, -self.speed)
 
 
-class BulletOfEnemy(pygame.sprite.Sprite):
-    image = load_image('other/laserGreen.png')
-
-    def __init__(self, *group):
-        super().__init__(*group)
-        self.image = BulletOfEnemy.image
-        self.rect = self.image.get_rect()
-
-
 class Base(pygame.sprite.Sprite):
     sound_of_crack = pygame.mixer.Sound('sound/ship/zvuk-srednego-vzryiva-6952.mp3')
     image = pygame.transform.flip(load_image('other/base/wship1.png'), True, False)
@@ -232,14 +226,29 @@ class EnemyShip(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
-        self.center = self.rect.center
-        print(self.center)
+        self.orig_image = self.image.copy()
 
     def rotate(self, args):
-        angle = calculate_angle(self.rect.x, self.rect.y, args[0], args[1])
-        self.image = pygame.transform.rotate(self.image, angle)
+        self.angle = calculate_angle(self.rect.x, self.rect.y, args[0], args[1])
+        orig_center = self.rect.center
+        self.image = pygame.transform.rotate(self.orig_image, self.angle)
+        self.rect = self.image.get_rect(center=orig_center)
+
+
+class BulletOfEnemy(pygame.sprite.Sprite):
+    image = load_image('other/laserGreen.png')
+
+    def __init__(self, *group, enemy):
+        super().__init__(*group)
+        self.image = BulletOfEnemy.image
         self.rect = self.image.get_rect()
-        self.rect.center = self.center
+        self.enemy = enemy
+        self.orig_image = self.image.copy()
+
+    def rotate(self, args):
+        orig_center = self.rect.center
+        self.image = pygame.transform.rotate(self.orig_image, enemy.angle)
+        self.rect = self.image.get_rect(center=orig_center)
 
 
 class Meteor(pygame.sprite.Sprite):
@@ -629,9 +638,12 @@ def start_level_2(ship):
 
     while running:
         if stage1:
+            start_time = pygame.time.get_ticks()
             enemy1 = EnemyShip(all_sprites, x=40, y=40)
             enemy2 = EnemyShip(all_sprites, x=400, y=40)
             enemy3 = EnemyShip(all_sprites, x=820, y=40)
+            stage1 = False
+            stage2 = True
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -639,12 +651,18 @@ def start_level_2(ship):
                 if new_ship.shield:
                     shield.move(event.pos)
                 new_ship.move(event.pos)
-                enemy1.rotate(event.pos)
+                if stage2:
+                    enemy1.rotate(event.pos)
+                    enemy2.rotate(event.pos)
+                    enemy3.rotate(event.pos)
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
                 bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
                 bullets.add(bullet_1)
                 bullets.add(bullet_2)
+            if stage2:
+                if (pygame.time.get_ticks() - start_time) // 1000 % 2 == 0:
+                    bullet_enemy_1 = BulletOfEnemy(all_sprites, enemy=enemy1)
         # if pygame.time.get_ticks() > 8000
         screen.blit(fon, (0, 0))
         screen.blit(text, (650, 435))
