@@ -671,6 +671,7 @@ def start_level_2(ship):
     stage1 = True
     stage2 = False
     stage3 = False
+    stage4 = False
     game_on = False
     end_on = False
     f = False
@@ -712,6 +713,12 @@ def start_level_2(ship):
                     enemy1.rotate(event.pos)
                     enemy2.rotate(event.pos)
                     enemy3.rotate(event.pos)
+                if stage4 and game_on:
+                    enemy1.rotate(event.pos)
+                    enemy2.rotate(event.pos)
+                    enemy3.rotate(event.pos)
+                    enemy4.rotate(event.pos)
+                    enemy5.rotate(event.pos)
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and game_on:
                 bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
                 bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
@@ -748,11 +755,52 @@ def start_level_2(ship):
                         bullet_enemy_3.rotate()
                         enemy_bullets.add(bullet_enemy_3)
                     if enemy1.death and enemy2.death and enemy3.death:
+                        stage3 = True
+                        stage2 = False
+            if stage3:
+                enemy1 = EnemyShip(all_sprites, x=40, y=-60, border=ver_lines, ship=new_ship,
+                                   bullets=bullets)
+                enemy2 = EnemyShip(all_sprites, x=400, y=-60, border=ver_lines, ship=new_ship,
+                                   bullets=bullets)
+                enemy3 = EnemyShip(all_sprites, x=820, y=-60, border=ver_lines, ship=new_ship,
+                                   bullets=bullets)
+                enemy4 = EnemyShip(all_sprites, x=200, y=-70, border=ver_lines, ship=new_ship,
+                                   bullets=bullets)
+                enemy5 = EnemyShip(all_sprites, x=600, y=-70, border=ver_lines, ship=new_ship,
+                                   bullets=bullets)
+                stage3 = False
+                stage4 = True
+            if stage4:
+                if (pygame.time.get_ticks() - start_time) // 1000 % 1 == 0 and (
+                        pygame.time.get_ticks() - start_time) // 1000 != current_time:
+                    current_time = (pygame.time.get_ticks() - start_time) // 1000
+                    if not enemy1.death:
+                        bullet_enemy_1 = BulletOfEnemy(all_sprites, enemy=enemy1)
+                        bullet_enemy_1.rotate()
+                        enemy_bullets.add(bullet_enemy_1)
+                    if not enemy2.death:
+                        bullet_enemy_2 = BulletOfEnemy(all_sprites, enemy=enemy2)
+                        bullet_enemy_2.rotate()
+                        enemy_bullets.add(bullet_enemy_2)
+                    if not enemy3.death:
+                        bullet_enemy_3 = BulletOfEnemy(all_sprites, enemy=enemy3)
+                        bullet_enemy_3.rotate()
+                        enemy_bullets.add(bullet_enemy_3)
+                    if not enemy4.death:
+                        bullet_enemy_4 = BulletOfEnemy(all_sprites, enemy=enemy4)
+                        bullet_enemy_4.rotate()
+                        enemy_bullets.add(bullet_enemy_4)
+                    if not enemy5.death:
+                        bullet_enemy_5 = BulletOfEnemy(all_sprites, enemy=enemy5)
+                        bullet_enemy_5.rotate()
+                        enemy_bullets.add(bullet_enemy_5)
+                    if enemy1.death and enemy2.death and enemy3.death and enemy4.death and enemy5.death:
                         CongratulationScreen.count += 1
                         CongratulationScreen.level += 1
                         win_screen(new_ship)
                         return
             if new_ship.death:
+                Ship.death_sound.play()
                 running = False
                 end_on = True
         screen.blit(fon, (0, 0))
