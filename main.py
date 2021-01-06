@@ -220,14 +220,16 @@ class SpeedLine(pygame.sprite.Sprite):
 class EnemyShip(pygame.sprite.Sprite):
     image = pygame.transform.scale(load_image('other/enemyShip.png'), (49, 25))
 
-    def __init__(self, *group, x, y):
+    def __init__(self, *group, x, y, border=None):
         super().__init__(*group)
         self.image = EnemyShip.image
+        self.border = border
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
         self.orig_image = self.image.copy()
         self.angle = 0
+        self.speed = 2
         self.orig_center = self.rect.center
 
     def rotate(self, args):
@@ -235,6 +237,11 @@ class EnemyShip(pygame.sprite.Sprite):
         self.orig_center = self.rect.center
         self.image = pygame.transform.rotate(self.orig_image, self.angle)
         self.rect = self.image.get_rect(center=self.orig_center)
+
+    def update(self):
+        if self.border:
+            if not pygame.sprite.spritecollideany(self, self.border):
+                self.rect = self.rect.move(0, self.speed)
 
 
 class BulletOfEnemy(pygame.sprite.Sprite):
@@ -320,13 +327,16 @@ class HorizonalBorders(pygame.sprite.Sprite):
 
 
 class VerticalBorders(pygame.sprite.Sprite):
-    def __init__(self, *group, direction):
+    def __init__(self, *group, direction=None, x=None, y=None):
         super().__init__(*group)
         self.image = pygame.Surface((WIDTH, 1))
         if direction == 'up':
             self.rect = pygame.Rect(0, 0, WIDTH, 1)
         elif direction == 'down':
             self.rect = pygame.Rect(0, HEIGHT - 1, WIDTH, 1)
+        elif not direction and y:
+            self.image = pygame.Surface((WIDTH, 1), pygame.SRCALPHA, 32)
+            self.rect = pygame.Rect(0, y, WIDTH, 1)
 
 
 class GameOverScreen(pygame.sprite.Sprite):
@@ -407,6 +417,7 @@ def start_level_1():
     game_on = False
     win = False
     first_time = 0
+    start_time = 0
     speed = 0
     end_on = False
     # Отслеживание времени
@@ -452,6 +463,8 @@ def start_level_1():
             if event.type == pygame.MOUSEMOTION and game_on:
                 ship.move(event.pos)
             if pygame.key.get_pressed()[pygame.K_SPACE]:
+                if not start_time:
+                    start_time = pygame.time.get_ticks()
                 game_on = True
                 speed = 3
             if game_on and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not ship.stop:
@@ -480,7 +493,8 @@ def start_level_1():
             f = True
         if pygame.time.get_ticks() % 1000 in range(-100, 100):
             SpeedLine(all_sprites)
-        if pygame.time.get_ticks() % 500 in range(-40, 40) and game_on:
+        if pygame.time.get_ticks() % 500 in range(-40,
+                                                  40) and game_on and pygame.time.get_ticks() - start_time > 2000:
             Meteor(all_sprites, base=base, ship=ship, bullets=bullets)
 
         screen.blit(fon, (0, 0))
@@ -642,30 +656,42 @@ def start_level_2(ship):
     stage2 = False
     stage3 = False
     stage4 = False
+    game_on = False
+    speed = 0
+    x1 = 25
+    x2 = 250
     current_time = 0
     # Текст
-    text = 'Здоровье: '
+    text = ['Здоровье: ', 'Уровень 2', 'Отбейтесь от вражеских кораблей',
+            'Нажмите Space, чтобы продолжить']
     font = pygame.font.SysFont('comicsansms', 30)
-    text = font.render(text, True, pygame.Color('#C0C0C0'))
+    text_1 = font.render(text[0], True, pygame.Color('#C0C0C0'))
+    text_2 = font.render(text[1], True, pygame.Color('#C0C0C0'))
+    text_3 = font.render(text[2], True, pygame.Color('#C0C0C0'))
+    # Границы
+    ver_lines = pygame.sprite.Group()
+    ver_line_1 = VerticalBorders(all_sprites, y=60)
+    ver_lines.add(ver_line_1)
 
     while running:
-        if stage1:
-            start_time = pygame.time.get_ticks()
-            enemy1 = EnemyShip(all_sprites, x=40, y=40)
-            enemy2 = EnemyShip(all_sprites, x=400, y=40)
-            enemy3 = EnemyShip(all_sprites, x=820, y=40)
-            stage1 = False
-            stage2 = True
-        if stage2:
-            if (pygame.time.get_ticks() - start_time) // 1000 % 1 == 0 and (
-                    pygame.time.get_ticks() - start_time) // 1000 != current_time:
-                current_time = (pygame.time.get_ticks() - start_time) // 1000
-                bullet_enemy_1 = BulletOfEnemy(all_sprites, enemy=enemy1)
-                bullet_enemy_1.rotate()
-                bullet_enemy_2 = BulletOfEnemy(all_sprites, enemy=enemy2)
-                bullet_enemy_2.rotate()
-                bullet_enemy_3 = BulletOfEnemy(all_sprites, enemy=enemy3)
-                bullet_enemy_3.rotate()
+        if game_on:
+            if stage1:
+                start_time = pygame.time.get_ticks()
+                enemy1 = EnemyShip(all_sprites, x=40, y=-60, border=ver_lines)
+                enemy2 = EnemyShip(all_sprites, x=400, y=-60, border=ver_lines)
+                enemy3 = EnemyShip(all_sprites, x=820, y=-60, border=ver_lines)
+                stage1 = False
+                stage2 = True
+            if stage2:
+                if (pygame.time.get_ticks() - start_time) // 1000 % 1 == 0 and (
+                        pygame.time.get_ticks() - start_time) // 1000 != current_time:
+                    current_time = (pygame.time.get_ticks() - start_time) // 1000
+                    bullet_enemy_1 = BulletOfEnemy(all_sprites, enemy=enemy1)
+                    bullet_enemy_1.rotate()
+                    bullet_enemy_2 = BulletOfEnemy(all_sprites, enemy=enemy2)
+                    bullet_enemy_2.rotate()
+                    bullet_enemy_3 = BulletOfEnemy(all_sprites, enemy=enemy3)
+                    bullet_enemy_3.rotate()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -673,18 +699,25 @@ def start_level_2(ship):
                 if new_ship.shield:
                     shield.move(event.pos)
                 new_ship.move(event.pos)
-                if stage2:
+                if stage2 and game_on:
                     enemy1.rotate(event.pos)
                     enemy2.rotate(event.pos)
                     enemy3.rotate(event.pos)
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and game_on:
                 bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
                 bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
                 bullets.add(bullet_1)
                 bullets.add(bullet_2)
-        # if pygame.time.get_ticks() > 8000
+            if pygame.key.get_pressed()[pygame.K_SPACE]:
+                game_on = True
+                speed = 3
         screen.blit(fon, (0, 0))
-        screen.blit(text, (650, 435))
+        if game_on and x2 + WIDTH > 0:
+            x1 -= speed
+            x2 -= speed
+        screen.blit(text_1, (650, 435))
+        screen.blit(text_2, (x1, 20))
+        screen.blit(text_3, (x2, 20))
         new_ship.drawhp()
         all_sprites.draw(screen)
         all_sprites.update()
