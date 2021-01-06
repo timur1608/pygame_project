@@ -231,6 +231,10 @@ class SpeedLine(pygame.sprite.Sprite):
 
 class EnemyShip(pygame.sprite.Sprite):
     image = pygame.transform.scale(load_image('other/enemyShip.png'), (49, 25))
+    sound_of_hit = pygame.mixer.Sound('sound/ship/zvuk-porajeniya-tseli-blasterom-na-sms-7045.mp3')
+    sound_of_hit.set_volume(0.1)
+    sound_of_crack = pygame.mixer.Sound('sound/ship/Sound_15114.mp3')
+    sound_of_crack.set_volume(0.3)
 
     def __init__(self, *group, x, y, border=None, bullets, ship):
         super().__init__(*group)
@@ -258,12 +262,14 @@ class EnemyShip(pygame.sprite.Sprite):
         if self.health <= 0:
             self.kill()
             self.death = True
+            EnemyShip.sound_of_crack.play()
         if self.border:
             if not pygame.sprite.spritecollideany(self, self.border):
                 self.rect = self.rect.move(0, self.speed)
         if pygame.sprite.spritecollideany(self, self.bullets):
             self.health -= 1
             pygame.sprite.spritecollide(self, self.bullets, True)
+            EnemyShip.sound_of_hit.play()
         if pygame.sprite.collide_mask(self, self.ship):
             self.ship.health -= 1
             self.health -= 1
@@ -271,6 +277,8 @@ class EnemyShip(pygame.sprite.Sprite):
 
 class BulletOfEnemy(pygame.sprite.Sprite):
     image = load_image('other/laserGreen.png')
+    sound = pygame.mixer.Sound('sound/gun/laser-blast-descend_gy7c5deo.mp3')
+    sound.set_volume(0.2)
 
     def __init__(self, *group, enemy):
         super().__init__(*group)
@@ -284,6 +292,7 @@ class BulletOfEnemy(pygame.sprite.Sprite):
         self.speed = 7
         self.vx = math.sin(math.radians(self.angle)) * self.speed
         self.vy = math.cos(math.radians(self.angle)) * self.speed
+        BulletOfEnemy.sound.play()
 
     def rotate(self):
         orig_center = self.rect.center
@@ -692,6 +701,10 @@ def start_level_2(ship):
     text_2 = font.render(text[1], True, pygame.Color('#C0C0C0'))
     text_3 = font.render(text[2], True, pygame.Color('#C0C0C0'))
     text_4 = font.render(text[3], True, pygame.Color('#C0C0C0'))
+    # Музыка
+    pygame.mixer.music.load('music/Steamtech-Mayhem.mp3')
+    pygame.mixer.music.set_volume(2)
+    pygame.mixer.music.play(-1)
     # Границы
     ver_line_1 = VerticalBorders(all_sprites, y=60)
     ver_lines.add(ver_line_1)
