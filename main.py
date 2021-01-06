@@ -711,8 +711,6 @@ def start_level_2(ship):
     horizontal_border_1 = HorizonalBorders(all_sprites, direction='right')
 
     while running:
-        if new_ship.health == 1:
-            new_ship.image = Ship.image_damaged_ship
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -816,6 +814,8 @@ def start_level_2(ship):
                 Ship.death_sound.play()
                 running = False
                 end_on = True
+        if new_ship.health == 1:
+            new_ship.image = Ship.image_damaged_ship
         screen.blit(fon, (0, 0))
         if game_on and x2 + WIDTH > 0:
             x1 -= speed
