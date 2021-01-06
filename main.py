@@ -88,6 +88,8 @@ class Ship(pygame.sprite.Sprite):
     image_right = pygame.transform.scale(load_image('other/playerRight.png'), (50, 38))
     image_left = pygame.transform.scale(load_image('other/playerLeft.png'), (50, 38))
     image_damaged_ship = pygame.transform.scale(load_image('other/playerDamaged.png'), (50, 38))
+    hit_sound = pygame.mixer.Sound('sound/ship/magical-laser-blast_mky8of4o.mp3')
+    hit_sound.set_volume(0.4)
 
     def __init__(self, *group, base=None, horizontal_borders=None, vertical_borders=None,
                  bullets=None):
@@ -156,6 +158,7 @@ class Ship(pygame.sprite.Sprite):
                     self.shield -= 1
                 else:
                     self.health -= 1
+                Ship.hit_sound.play()
                 pygame.sprite.spritecollide(self, self.bullets, True)
 
 
