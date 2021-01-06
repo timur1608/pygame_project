@@ -10,7 +10,6 @@ pygame.init()
 size = WIDTH, HEIGHT = 900, 500
 screen = pygame.display.set_mode((size))
 pygame.display.set_caption('pre_alpha_project')
-manager = pygame_gui.UIManager((WIDTH, HEIGHT))
 FPS = 50
 
 
@@ -90,7 +89,8 @@ class Ship(pygame.sprite.Sprite):
     image_left = pygame.transform.scale(load_image('other/playerLeft.png'), (50, 38))
     image_damaged_ship = pygame.transform.scale(load_image('other/playerDamaged.png'), (50, 38))
 
-    def __init__(self, *group, base=None, horizontal_borders=None, vertical_borders=None):
+    def __init__(self, *group, base=None, horizontal_borders=None, vertical_borders=None,
+                 bullets=None):
         super().__init__(*group)
         self.base = base
         self.death = False
@@ -99,6 +99,7 @@ class Ship(pygame.sprite.Sprite):
         self.horizontal_borders = horizontal_borders
         self.image = Ship.image
         self.rect = self.image.get_rect()
+        self.bullets = bullets
         self.count = 0
         self.angle = 1
         self.rect.x = 430
@@ -145,6 +146,17 @@ class Ship(pygame.sprite.Sprite):
             pygame.draw.rect(screen, 'green', (800 + self.count, 450, 20, 20))
             self.count += 20
         self.count = 0
+
+    def update(self):
+        if self.health <= 0:
+            self.death = True
+        if self.bullets:
+            if pygame.sprite.spritecollideany(self, self.bullets):
+                if self.shield:
+                    self.shield -= 1
+                else:
+                    self.health -= 1
+                pygame.sprite.spritecollide(self, self.bullets, True)
 
 
 class Shield(pygame.sprite.Sprite):
@@ -220,13 +232,17 @@ class SpeedLine(pygame.sprite.Sprite):
 class EnemyShip(pygame.sprite.Sprite):
     image = pygame.transform.scale(load_image('other/enemyShip.png'), (49, 25))
 
-    def __init__(self, *group, x, y, border=None):
+    def __init__(self, *group, x, y, border=None, bullets, ship):
         super().__init__(*group)
         self.image = EnemyShip.image
         self.border = border
+        self.bullets = bullets
         self.rect = self.image.get_rect()
+        self.ship = ship
         self.rect.x = x
+        self.death = False
         self.rect.y = y
+        self.health = 20
         self.orig_image = self.image.copy()
         self.angle = 0
         self.speed = 2
@@ -239,9 +255,18 @@ class EnemyShip(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.orig_center)
 
     def update(self):
+        if self.health <= 0:
+            self.kill()
+            self.death = True
         if self.border:
             if not pygame.sprite.spritecollideany(self, self.border):
                 self.rect = self.rect.move(0, self.speed)
+        if pygame.sprite.spritecollideany(self, self.bullets):
+            self.health -= 1
+            pygame.sprite.spritecollide(self, self.bullets, True)
+        if pygame.sprite.collide_mask(self, self.ship):
+            self.ship.health -= 1
+            self.health -= 1
 
 
 class BulletOfEnemy(pygame.sprite.Sprite):
@@ -357,6 +382,7 @@ class GameOverScreen(pygame.sprite.Sprite):
 class CongratulationScreen(pygame.sprite.Sprite):
     image = load_image('Background\maxresdefault.jpg')
     count = 2
+    level = 1
 
     def __init__(self, *group, vertical_borders, ship):
         super().__init__(*group)
@@ -367,11 +393,11 @@ class CongratulationScreen(pygame.sprite.Sprite):
         self.stop = False
         self.rect.y = 0 - HEIGHT
         self.ship = ship
-        self.count = 2
-        strings = ["Поздравляю, вы прошли 1 уровень.",
+        self.count = CongratulationScreen.count
+        strings = [f"Поздравляю, вы прошли {CongratulationScreen.level} уровень.",
                    f'У вас есть {CongratulationScreen.count} очков умений для улучшения корабля']
         skills = [f'Здоровье: {self.ship.health}', f'Наличие щита: {self.ship.shield}',
-                  f'Скорость снаряда: {Bullet.speed}', f'Урон: {self.ship.damage}']
+                  f'Скорость снаряда: {Bullet.speed}']
         font = pygame.font.SysFont('comicsansms', 30)
         for i, j in enumerate(strings):
             string = font.render(j, True, pygame.Color('#C0C0C0'))
@@ -482,9 +508,6 @@ def start_level_1():
             end_on = True
             running = False
         if win:
-            pygame.mixer.music.load(
-                'sound/ship/456968__funwithsound__success-resolution-video-game-fanfare-sound-effect.mp3')
-            pygame.mixer.music.play()
             win_screen(ship)
             return
         if pygame.time.get_ticks() > 28000 and not f:
@@ -541,7 +564,10 @@ def start_level_1():
 
 
 def win_screen(ship):
-    ship.health = 2
+    manager = pygame_gui.UIManager((WIDTH, HEIGHT))
+    pygame.mixer.music.load(
+        'sound/ship/456968__funwithsound__success-resolution-video-game-fanfare-sound-effect.mp3')
+    pygame.mixer.music.play()
     # Флаги
     buttons_on = False
     running = True
@@ -585,11 +611,6 @@ def win_screen(ship):
                 text='+',
                 manager=manager
             )
-            damage_button = pygame_gui.elements.UIButton(
-                relative_rect=pygame.Rect((400, 285), (30, 30)),
-                text='+',
-                manager=manager
-            )
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -614,14 +635,10 @@ def win_screen(ship):
                             ship.shield = 1
                             winsc.count -= 1
                             print(ship.shield)
-                    if event.ui_element == damage_button:
-                        if winsc.count > 0:
-                            winsc.count -= 1
-                            ship.damage += 1
-                            print(ship.damage)
                     if event.ui_element == next_button:
                         running = False
-                        start_level_2(ship)
+                        if CongratulationScreen.level == 1:
+                            start_level_2(ship)
                         return
 
         manager.update(time_delta)
@@ -641,26 +658,31 @@ def start_level_2(ship):
     # Спрайты
     all_sprites = pygame.sprite.Group()
     bullets = pygame.sprite.Group()
+    enemy_bullets = pygame.sprite.Group()
+    ver_lines = pygame.sprite.Group()
     # Новые объекты
-    new_ship = Ship(all_sprites)
+    new_ship = Ship(all_sprites, bullets=enemy_bullets)
     # Улучшения корабля
     new_ship.health = ship.health
     new_ship.shield = ship.shield
     new_ship.damage = ship.damage
-    # Щит
-    if new_ship.shield:
-        shield = Shield(all_sprites)
     # Флаги
     running = True
     stage1 = True
     stage2 = False
     stage3 = False
-    stage4 = False
     game_on = False
+    end_on = False
+    f = False
+    # Переменные
     speed = 0
     x1 = 25
     x2 = 250
     current_time = 0
+    # Щит
+    if new_ship.shield:
+        f = True
+        shield = Shield(all_sprites)
     # Текст
     text = ['Здоровье: ', 'Уровень 2', 'Отбейтесь от вражеских кораблей',
             'Нажмите Space, чтобы продолжить']
@@ -668,36 +690,23 @@ def start_level_2(ship):
     text_1 = font.render(text[0], True, pygame.Color('#C0C0C0'))
     text_2 = font.render(text[1], True, pygame.Color('#C0C0C0'))
     text_3 = font.render(text[2], True, pygame.Color('#C0C0C0'))
+    text_4 = font.render(text[3], True, pygame.Color('#C0C0C0'))
     # Границы
-    ver_lines = pygame.sprite.Group()
     ver_line_1 = VerticalBorders(all_sprites, y=60)
     ver_lines.add(ver_line_1)
+    horizontal_border_1 = HorizonalBorders(all_sprites, direction='right')
 
     while running:
-        if game_on:
-            if stage1:
-                start_time = pygame.time.get_ticks()
-                enemy1 = EnemyShip(all_sprites, x=40, y=-60, border=ver_lines)
-                enemy2 = EnemyShip(all_sprites, x=400, y=-60, border=ver_lines)
-                enemy3 = EnemyShip(all_sprites, x=820, y=-60, border=ver_lines)
-                stage1 = False
-                stage2 = True
-            if stage2:
-                if (pygame.time.get_ticks() - start_time) // 1000 % 1 == 0 and (
-                        pygame.time.get_ticks() - start_time) // 1000 != current_time:
-                    current_time = (pygame.time.get_ticks() - start_time) // 1000
-                    bullet_enemy_1 = BulletOfEnemy(all_sprites, enemy=enemy1)
-                    bullet_enemy_1.rotate()
-                    bullet_enemy_2 = BulletOfEnemy(all_sprites, enemy=enemy2)
-                    bullet_enemy_2.rotate()
-                    bullet_enemy_3 = BulletOfEnemy(all_sprites, enemy=enemy3)
-                    bullet_enemy_3.rotate()
+        if new_ship.health == 1:
+            new_ship.image = Ship.image_damaged_ship
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEMOTION:
                 if new_ship.shield:
                     shield.move(event.pos)
+                elif f:
+                    shield.kill()
                 new_ship.move(event.pos)
                 if stage2 and game_on:
                     enemy1.rotate(event.pos)
@@ -711,6 +720,41 @@ def start_level_2(ship):
             if pygame.key.get_pressed()[pygame.K_SPACE]:
                 game_on = True
                 speed = 3
+        if game_on:
+            if stage1:
+                start_time = pygame.time.get_ticks()
+                enemy1 = EnemyShip(all_sprites, x=40, y=-60, border=ver_lines, ship=new_ship,
+                                   bullets=bullets)
+                enemy2 = EnemyShip(all_sprites, x=400, y=-60, border=ver_lines, ship=new_ship,
+                                   bullets=bullets)
+                enemy3 = EnemyShip(all_sprites, x=820, y=-60, border=ver_lines, ship=new_ship,
+                                   bullets=bullets)
+                stage1 = False
+                stage2 = True
+            if stage2:
+                if (pygame.time.get_ticks() - start_time) // 1000 % 1 == 0 and (
+                        pygame.time.get_ticks() - start_time) // 1000 != current_time:
+                    current_time = (pygame.time.get_ticks() - start_time) // 1000
+                    if not enemy1.death:
+                        bullet_enemy_1 = BulletOfEnemy(all_sprites, enemy=enemy1)
+                        bullet_enemy_1.rotate()
+                        enemy_bullets.add(bullet_enemy_1)
+                    if not enemy2.death:
+                        bullet_enemy_2 = BulletOfEnemy(all_sprites, enemy=enemy2)
+                        bullet_enemy_2.rotate()
+                        enemy_bullets.add(bullet_enemy_2)
+                    if not enemy3.death:
+                        bullet_enemy_3 = BulletOfEnemy(all_sprites, enemy=enemy3)
+                        bullet_enemy_3.rotate()
+                        enemy_bullets.add(bullet_enemy_3)
+                    if enemy1.death and enemy2.death and enemy3.death:
+                        CongratulationScreen.count += 1
+                        CongratulationScreen.level += 1
+                        win_screen(new_ship)
+                        return
+            if new_ship.death:
+                running = False
+                end_on = True
         screen.blit(fon, (0, 0))
         if game_on and x2 + WIDTH > 0:
             x1 -= speed
@@ -718,7 +762,22 @@ def start_level_2(ship):
         screen.blit(text_1, (650, 435))
         screen.blit(text_2, (x1, 20))
         screen.blit(text_3, (x2, 20))
+        if not game_on:
+            screen.blit(text_4, (200, 250))
         new_ship.drawhp()
+        all_sprites.draw(screen)
+        all_sprites.update()
+        pygame.display.flip()
+        clock.tick(FPS)
+
+    end_screen = GameOverScreen(all_sprites, borders=horizontal_border_1)
+    pygame.mixer.music.load('music/539674__jhyland__game-over.mp3')
+    pygame.mixer.music.play(1)
+    while end_on:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                end_on = False
+        screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
         all_sprites.update()
         pygame.display.flip()
