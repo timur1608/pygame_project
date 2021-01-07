@@ -325,9 +325,9 @@ class Meteor(pygame.sprite.Sprite):
         self.base = base
         self.count = 0
         self.ship = ship
-        self.rect.x = randint(650, 900)
-        self.rect.y = randint(-100, 50)
-        self.vx = randint(-13, -10)
+        self.rect.x = randint(900, 1000)
+        self.rect.y = randint(-100, 200)
+        self.vx = randint(-13, -8)
         self.vy = randint(3, 5)
 
     def update(self):
@@ -528,7 +528,7 @@ def start_level_1():
             f = True
         if pygame.time.get_ticks() % 1000 in range(-100, 100):
             SpeedLine(all_sprites)
-        if pygame.time.get_ticks() % 500 in range(-40,
+        if pygame.time.get_ticks() % 400 in range(-40,
                                                   40) and game_on and pygame.time.get_ticks() - start_time > 2000:
             Meteor(all_sprites, base=base, ship=ship, bullets=bullets)
 
@@ -543,10 +543,10 @@ def start_level_1():
             time = pygame.time.get_ticks()
             if not first_time:
                 first_time = time
-            timer = f'Осталось еще продержаться: {60 - (time - first_time) // 1000}'
+            timer = f'Осталось еще продержаться: {40 - (time - first_time) // 1000}'
             timer = font.render(timer, True, pygame.Color('#C0C0C0'))
             screen.blit(timer, (x3, 0))
-            if 60 - (time - first_time) // 1000 == 0:
+            if 40 - (time - first_time) // 1000 == 0:
                 win = True
         screen.blit(text, (x2, 0))
         screen.blit(health_ship, (650, 435))
@@ -651,6 +651,8 @@ def win_screen(ship):
                         running = False
                         if CongratulationScreen.level == 1:
                             start_level_2(ship)
+                        elif CongratulationScreen.level == 2:
+                            start_level_3(ship)
                         return
 
         manager.update(time_delta)
@@ -846,6 +848,15 @@ def start_level_2(ship):
         all_sprites.update()
         pygame.display.flip()
         clock.tick(FPS)
+
+
+def start_level_3(ship):
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        screen.fill('black')
 
 
 if __name__ == '__main__':
