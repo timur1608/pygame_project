@@ -546,7 +546,7 @@ def start_level_1():
             timer = f'Осталось еще продержаться: {40 - (time - first_time) // 1000}'
             timer = font.render(timer, True, pygame.Color('#C0C0C0'))
             screen.blit(timer, (x3, 0))
-            if 40 - (time - first_time) // 1000 == 0:
+            if 1 - (time - first_time) // 1000 == 0:
                 win = True
         screen.blit(text, (x2, 0))
         screen.blit(health_ship, (650, 435))
@@ -650,9 +650,9 @@ def win_screen(ship):
                     if event.ui_element == next_button:
                         running = False
                         if CongratulationScreen.level == 1:
-                            start_level_2(ship)
-                        elif CongratulationScreen.level == 2:
                             start_level_3(ship)
+                        elif CongratulationScreen.level == 2:
+                            start_level_2(ship)
                         return
 
         manager.update(time_delta)
@@ -679,7 +679,6 @@ def start_level_2(ship):
     # Улучшения корабля
     new_ship.health = ship.health
     new_ship.shield = ship.shield
-    new_ship.damage = ship.damage
     # Флаги
     running = True
     stage1 = True
@@ -851,12 +850,29 @@ def start_level_2(ship):
 
 
 def start_level_3(ship):
+    # Музыка
+    pygame.mixer.music.load('music/level_3/Crusaders-Approaching.mp3')
+    pygame.mixer.music.play(-1)
+    # Спрайты
+    all_sprites = pygame.sprite.Group()
+    # Флаги
     running = True
+    # Корабль
+    new_ship = Ship(all_sprites)
+    new_ship.health = ship.health
+    new_ship.shield = ship.shield
+    # Спрайты
+    fon = pygame.transform.scale(load_image('level_3/background.jpg'), (WIDTH, HEIGHT))
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        screen.fill('black')
+            if event.type == pygame.MOUSEMOTION:
+                new_ship.move(event.pos)
+        screen.blit(fon, (0, 0))
+        all_sprites.draw(screen)
+        all_sprites.update()
+        pygame.display.flip()
 
 
 if __name__ == '__main__':
