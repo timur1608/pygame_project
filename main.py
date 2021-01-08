@@ -306,6 +306,14 @@ class BulletOfEnemy(pygame.sprite.Sprite):
         self.rect = self.rect.move(self.vx, self.vy)
 
 
+class BigEnemyShip(pygame.sprite.Sprite):
+    image = load_image('level_3/ship.png')
+
+    def __init__(self, *group):
+        super().__init__(*group)
+
+
+
 class Meteor(pygame.sprite.Sprite):
     images = list()
     for i in range(60):
@@ -863,6 +871,8 @@ def start_level_3(ship):
     new_ship.shield = ship.shield
     # Спрайты
     fon = pygame.transform.scale(load_image('level_3/background.jpg'), (WIDTH, HEIGHT))
+    # Вражеский корабль
+    enemyship = BigEnemyShip(all_sprites)
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
