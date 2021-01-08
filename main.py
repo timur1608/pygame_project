@@ -307,10 +307,14 @@ class BulletOfEnemy(pygame.sprite.Sprite):
 
 
 class BigEnemyShip(pygame.sprite.Sprite):
-    image = load_image('level_3/ship.png')
+    image = load_image('level_3/ship.jpg')
 
     def __init__(self, *group):
         super().__init__(*group)
+        self.image = BigEnemyShip.image
+        self.rect = self.image.get_rect()
+        self.rect.x = 850
+        self.rect.y = 400
 
 
 
