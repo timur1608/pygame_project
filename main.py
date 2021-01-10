@@ -328,6 +328,10 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.rect.x = 900
         self.rect.y = 400
         self.stop = False
+        self.left = False
+        self.right = True
+        self.f = False
+        self.choice = 0
         self.orig_image = self.image.copy()
         self.orig_center = self.rect.center
 
@@ -366,11 +370,37 @@ class BigEnemyShip(pygame.sprite.Sprite):
                         self.iter += 1
                     else:
                         self.iter += 1
+                    self.move()
 
-    def rotate(self, angle):
+    def rotate(self, angle, orig_image=None):
         self.orig_center = self.rect.center
-        self.image = pygame.transform.rotate(self.orig_image, angle)
+        if not orig_image:
+            self.image = pygame.transform.rotate(self.orig_image, angle)
+        else:
+            self.image = pygame.transform.rotate(orig_image, angle)
         self.rect = self.image.get_rect(center=self.orig_center)
+
+    def move(self):
+        if self.right:
+            if self.vx > 0:
+                if self.choice != 200:
+                    self.choice += 1
+                self.image = BigEnemyShip.images[::-1][4:][::-1][self.choice // 50]
+                self.rotate(180, orig_image=self.image)
+            else:
+                self.choice = 0
+                self.right = False
+                self.left = True
+        else:
+            if self.vx < 0:
+                if self.choice != 200:
+                    self.choice += 1
+                self.image = BigEnemyShip.images[4:][self.choice // 50]
+                self.rotate(180, orig_image=self.image)
+            else:
+                self.choice = 0
+                self.right = True
+                self.left = False
 
 
 class Meteor(pygame.sprite.Sprite):
