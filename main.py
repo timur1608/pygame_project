@@ -359,11 +359,13 @@ class BigEnemyShip(pygame.sprite.Sprite):
                     self.iter += 1
             else:
                 if self.borders:
-                    if not pygame.sprite.spritecollideany(self, self.borders):
-                        self.rect.move(self.vx, 0)
-                    else:
+                    if pygame.sprite.spritecollideany(self, self.borders):
                         self.vx = -self.vx
-                        self.rect.move(self.vx, 0)
+                    if self.iter % 3 == 0:
+                        self.rect = self.rect.move(self.vx, 0)
+                        self.iter += 1
+                    else:
+                        self.iter += 1
 
     def rotate(self, angle):
         self.orig_center = self.rect.center
