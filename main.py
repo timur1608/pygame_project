@@ -307,15 +307,68 @@ class BulletOfEnemy(pygame.sprite.Sprite):
 
 
 class BigEnemyShip(pygame.sprite.Sprite):
-    image = load_image('level_3/ship.jpg')
+    sound_of_flying = pygame.mixer.Sound('sound/ship/ship_fly.mp3')
+    images = list()
+    for i in range(1, 10):
+        image = pygame.transform.scale(load_image(f'level_3/ship/redfighter000{i}.png'), (258, 288))
+        images.append(image)
 
-    def __init__(self, *group):
+    def __init__(self, *group, border_1=None, border_2=None, borders=None):
         super().__init__(*group)
-        self.image = BigEnemyShip.image
+        BigEnemyShip.sound_of_flying.play(0)
+        self.image = BigEnemyShip.images[4]
         self.rect = self.image.get_rect()
-        self.rect.x = 850
+        self.count = 0
+        self.iter = 1
+        self.borders = borders
+        self.border = border_1
+        self.vx = 1
+        self.border_2 = border_2
+        self.speed = 2
+        self.rect.x = 900
         self.rect.y = 400
+        self.stop = False
+        self.orig_image = self.image.copy()
+        self.orig_center = self.rect.center
 
+    def stage_1(self):
+        if self.border:
+            if not pygame.sprite.spritecollideany(self, self.border):
+                if self.count != 200:
+                    self.count += 1
+                if self.count % 50 == 0:
+                    self.image = BigEnemyShip.images[::-1][4:][::-1][self.count // 50]
+                    self.rotate(45)
+
+                if self.iter % 5 == 0:
+                    self.rect = self.rect.move(-1, -1)
+                    self.iter += 1
+                else:
+                    self.iter += 1
+            else:
+                self.rotate(180)
+                self.stop = True
+
+    def stage_2(self):
+        if self.border_2:
+            if not pygame.sprite.spritecollideany(self, self.border_2):
+                if self.iter % 6 == 0:
+                    self.rect = self.rect.move(0, 1)
+                    self.iter += 1
+                else:
+                    self.iter += 1
+            else:
+                if self.borders:
+                    if not pygame.sprite.spritecollideany(self, self.borders):
+                        self.rect.move(self.vx, 0)
+                    else:
+                        self.vx = -self.vx
+                        self.rect.move(self.vx, 0)
+
+    def rotate(self, angle):
+        self.orig_center = self.rect.center
+        self.image = pygame.transform.rotate(self.orig_image, angle)
+        self.rect = self.image.get_rect(center=self.orig_center)
 
 
 class Meteor(pygame.sprite.Sprite):
@@ -349,18 +402,18 @@ class Meteor(pygame.sprite.Sprite):
         self.image = Meteor.images[self.count]
         self.rect = self.rect.move(self.vx, self.vy)
         if pygame.sprite.collide_mask(self, self.base):
-            self.sound_of_crack.play()
+            self.sound_of_crack.play(0)
             self.base.health -= 1
             self.kill()
             if self.base.health == 0:
                 self.base.death = True
-                Base.sound_of_crack.play()
+                Base.sound_of_crack.play(0)
         if pygame.sprite.spritecollideany(self, self.bullets):
-            self.sound_of_crack.play()
+            self.sound_of_crack.play(0)
             self.kill()
             pygame.sprite.spritecollide(self, self.bullets, True)
         if pygame.sprite.collide_mask(self, self.ship):
-            self.sound_of_crack.play()
+            self.sound_of_crack.play(0)
             self.ship.health -= 1
             self.kill()
 
@@ -867,6 +920,9 @@ def start_level_3(ship):
     pygame.mixer.music.play(-1)
     # Спрайты
     all_sprites = pygame.sprite.Group()
+    ver_lines_1 = pygame.sprite.Group()
+    ver_lines_2 = pygame.sprite.Group()
+    hor_lines = pygame.sprite.Group()
     # Флаги
     running = True
     # Корабль
@@ -875,8 +931,14 @@ def start_level_3(ship):
     new_ship.shield = ship.shield
     # Спрайты
     fon = pygame.transform.scale(load_image('level_3/background.jpg'), (WIDTH, HEIGHT))
+    # Границы для вражеского корабля
+    ver_line_1 = VerticalBorders(ver_lines_1, y=-400)
+    ver_line_2 = VerticalBorders(ver_lines_2, y=200)
+    hor_line_1 = HorizonalBorders(hor_lines, direction='right')
+    hor_line_2 = HorizonalBorders(hor_lines, direction='left')
     # Вражеский корабль
-    enemyship = BigEnemyShip(all_sprites)
+    enemyship = BigEnemyShip(all_sprites, border_1=ver_lines_1, border_2=ver_lines_2,
+                             borders=hor_lines)
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -885,6 +947,10 @@ def start_level_3(ship):
                 new_ship.move(event.pos)
         screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
+        if not enemyship.stop:
+            enemyship.stage_1()
+        else:
+            enemyship.stage_2()
         all_sprites.update()
         pygame.display.flip()
 
