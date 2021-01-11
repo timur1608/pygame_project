@@ -322,15 +322,16 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.iter = 1
         self.borders = borders
         self.border = border_1
-        self.vx = 1
+        self.vx = 5
         self.border_2 = border_2
-        self.speed = 2
+        self.speed = 4
         self.rect.x = 900
         self.rect.y = 400
         self.stop = False
         self.left = False
         self.right = True
         self.f = False
+        self.stage2 = False
         self.choice = 0
         self.orig_image = self.image.copy()
         self.orig_center = self.rect.center
@@ -338,17 +339,13 @@ class BigEnemyShip(pygame.sprite.Sprite):
     def stage_1(self):
         if self.border:
             if not pygame.sprite.spritecollideany(self, self.border):
-                if self.count != 200:
+                if self.count != 20:
                     self.count += 1
-                if self.count % 50 == 0:
-                    self.image = BigEnemyShip.images[::-1][4:][::-1][self.count // 50]
+                if self.count % 5 == 0:
+                    self.image = BigEnemyShip.images[::-1][4:][::-1][self.count // 5]
                     self.rotate(45)
 
-                if self.iter % 5 == 0:
-                    self.rect = self.rect.move(-1, -1)
-                    self.iter += 1
-                else:
-                    self.iter += 1
+                self.rect = self.rect.move(-self.speed, -self.speed)
             else:
                 self.rotate(180)
                 self.stop = True
@@ -356,20 +353,13 @@ class BigEnemyShip(pygame.sprite.Sprite):
     def stage_2(self):
         if self.border_2:
             if not pygame.sprite.spritecollideany(self, self.border_2):
-                if self.iter % 6 == 0:
-                    self.rect = self.rect.move(0, 1)
-                    self.iter += 1
-                else:
-                    self.iter += 1
+                self.rect = self.rect.move(0, self.speed)
             else:
+                self.stage2 = True
                 if self.borders:
                     if pygame.sprite.spritecollideany(self, self.borders):
                         self.vx = -self.vx
-                    if self.iter % 3 == 0:
-                        self.rect = self.rect.move(self.vx, 0)
-                        self.iter += 1
-                    else:
-                        self.iter += 1
+                    self.rect = self.rect.move(self.vx, 0)
                     self.move()
 
     def rotate(self, angle, orig_image=None):
@@ -383,9 +373,9 @@ class BigEnemyShip(pygame.sprite.Sprite):
     def move(self):
         if self.right:
             if self.vx > 0:
-                if self.choice != 200:
+                if self.choice != 20:
                     self.choice += 1
-                self.image = BigEnemyShip.images[::-1][4:][::-1][self.choice // 50]
+                self.image = BigEnemyShip.images[::-1][4:][self.choice // 5]
                 self.rotate(180, orig_image=self.image)
             else:
                 self.choice = 0
@@ -393,9 +383,9 @@ class BigEnemyShip(pygame.sprite.Sprite):
                 self.left = True
         else:
             if self.vx < 0:
-                if self.choice != 200:
+                if self.choice != 20:
                     self.choice += 1
-                self.image = BigEnemyShip.images[4:][self.choice // 50]
+                self.image = BigEnemyShip.images[4:][self.choice // 5]
                 self.rotate(180, orig_image=self.image)
             else:
                 self.choice = 0
@@ -451,17 +441,20 @@ class Meteor(pygame.sprite.Sprite):
 
 
 class HorizonalBorders(pygame.sprite.Sprite):
-    def __init__(self, *group, direction):
+    def __init__(self, *group, direction=None, x=None):
         super().__init__(*group)
         self.image = pygame.Surface((1, HEIGHT))
         if direction == 'right':
             self.rect = pygame.Rect(WIDTH - 1, 0, 1, HEIGHT)
         elif direction == 'left':
             self.rect = pygame.Rect(0, 0, 1, HEIGHT)
+        elif not direction and x:
+            self.image = pygame.Surface((1, HEIGHT), pygame.SRCALPHA, 32)
+            self.rect = pygame.Rect(x, 0, 1, HEIGHT)
 
 
 class VerticalBorders(pygame.sprite.Sprite):
-    def __init__(self, *group, direction=None, x=None, y=None):
+    def __init__(self, *group, direction=None, y=None):
         super().__init__(*group)
         self.image = pygame.Surface((WIDTH, 1))
         if direction == 'up':
@@ -955,8 +948,12 @@ def start_level_3(ship):
     ver_lines_1 = pygame.sprite.Group()
     ver_lines_2 = pygame.sprite.Group()
     hor_lines = pygame.sprite.Group()
+    enemy_bullets = pygame.sprite.Group()
+    bullets = pygame.sprite.Group()
     # Флаги
     running = True
+    # Переменные
+    clock = pygame.time.Clock()
     # Корабль
     new_ship = Ship(all_sprites)
     new_ship.health = ship.health
@@ -965,9 +962,9 @@ def start_level_3(ship):
     fon = pygame.transform.scale(load_image('level_3/background.jpg'), (WIDTH, HEIGHT))
     # Границы для вражеского корабля
     ver_line_1 = VerticalBorders(ver_lines_1, y=-400)
-    ver_line_2 = VerticalBorders(ver_lines_2, y=200)
-    hor_line_1 = HorizonalBorders(hor_lines, direction='right')
-    hor_line_2 = HorizonalBorders(hor_lines, direction='left')
+    ver_line_2 = VerticalBorders(ver_lines_2, y=180)
+    hor_line_1 = HorizonalBorders(hor_lines, x=960)
+    hor_line_2 = HorizonalBorders(hor_lines, x=-60)
     # Вражеский корабль
     enemyship = BigEnemyShip(all_sprites, border_1=ver_lines_1, border_2=ver_lines_2,
                              borders=hor_lines)
@@ -977,6 +974,11 @@ def start_level_3(ship):
                 running = False
             if event.type == pygame.MOUSEMOTION:
                 new_ship.move(event.pos)
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and enemyship.stop:
+                bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
+                bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
+                bullets.add(bullet_1)
+                bullets.add(bullet_2)
         screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
         if not enemyship.stop:
@@ -985,6 +987,8 @@ def start_level_3(ship):
             enemyship.stage_2()
         all_sprites.update()
         pygame.display.flip()
+        clock.tick(FPS)
+
 
 
 if __name__ == '__main__':
