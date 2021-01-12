@@ -636,7 +636,7 @@ def start_level_1():
             timer = f'Осталось еще продержаться: {40 - (time - first_time) // 1000}'
             timer = font.render(timer, True, pygame.Color('#C0C0C0'))
             screen.blit(timer, (x3, 0))
-            if 1 - (time - first_time) // 1000 == 0:
+            if 40 - (time - first_time) // 1000 == 0:
                 win = True
         screen.blit(text, (x2, 0))
         screen.blit(health_ship, (650, 435))
@@ -740,9 +740,9 @@ def win_screen(ship):
                     if event.ui_element == next_button:
                         running = False
                         if CongratulationScreen.level == 1:
-                            start_level_3(ship)
-                        elif CongratulationScreen.level == 2:
                             start_level_2(ship)
+                        elif CongratulationScreen.level == 2:
+                            start_level_3(ship)
                         return
 
         manager.update(time_delta)
