@@ -42,46 +42,6 @@ def calculate_angle(x0, y0, x1, y1) -> float:
         return math.degrees(math.asin(a))
 
 
-def start_screen():
-    font_size = 20
-    speed = 1
-    x = 250
-    y = 450
-    pygame.mixer.music.load('music/Retro Vibes.mp3')
-    pygame.mixer.music.play()
-    fon = pygame.transform.scale(load_image('Flat Night 4 BG.png'), (WIDTH, HEIGHT))
-    intro_text = ['Чтобы начать игру, нажмите SPACE',
-                  'made by Timur Izmaylov',
-                  ]
-    font_2 = pygame.font.Font(None, 20)
-    string_2 = font_2.render(intro_text[1], True, pygame.Color('#C0C0C0'))
-    place_2 = (10, 10)
-    clock = pygame.time.Clock()
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT or pygame.key.get_pressed()[pygame.K_ESCAPE]:
-                terminate()
-            if pygame.key.get_pressed()[pygame.K_SPACE]:
-                pygame.mixer.music.stop()
-                return
-        font_size += speed
-        x += -speed * 5
-        if font_size == 38:
-            speed = -1
-        elif font_size == 24:
-            speed = 1
-        screen.blit(fon, (0, 0))
-        place_1 = (x, y)
-        screen.blit(string_2, place_2)
-        font = pygame.font.SysFont('comicsansms', font_size)
-        string = font.render(intro_text[0], True, pygame.Color('#C0C0C0'))
-        screen.blit(string, place_1)
-
-        pygame.display.flip()
-        clock.tick(FPS)
-
-
 class Ship(pygame.sprite.Sprite):
     death_sound = pygame.mixer.Sound('sound/ship/bomb-sound-effect.mp3')
     image = pygame.transform.scale(load_image('other/player.png'), (50, 38))
@@ -180,6 +140,7 @@ class Bullet(pygame.sprite.Sprite):
     image = pygame.transform.scale(load_image('other/laserRed.png'), (7, 50))
     sound_of_gun = pygame.mixer.Sound('sound/gun/laser-gun-single-shot_zyz4u34u.mp3')
     sound_of_gun.set_volume(0.25)
+    image_of_hit = load_image('other/laserRedShot.png')
 
     def __init__(self, *group, args, direction):
         super().__init__(*group)
@@ -475,10 +436,13 @@ class GameOverScreen(pygame.sprite.Sprite):
         self.image = GameOverScreen.image
         self.rect = self.image.get_rect()
         self.rect.x = 0 - WIDTH
+        self.stop = False
 
     def update(self):
         if not pygame.sprite.collide_mask(self, self.borders):
             self.rect = self.rect.move(10, 0)
+        else:
+            self.stop = True
 
 
 class CongratulationScreen(pygame.sprite.Sprite):
@@ -526,6 +490,46 @@ class Cursor(pygame.sprite.Sprite):
     def update(self, args):
         self.rect.x = args[0]
         self.rect.y = args[1]
+
+
+def start_screen():
+    font_size = 20
+    speed = 1
+    x = 250
+    y = 450
+    pygame.mixer.music.load('music/Retro Vibes.mp3')
+    pygame.mixer.music.play()
+    fon = pygame.transform.scale(load_image('Flat Night 4 BG.png'), (WIDTH, HEIGHT))
+    intro_text = ['Чтобы начать игру, нажмите SPACE',
+                  'made by Timur Izmaylov',
+                  ]
+    font_2 = pygame.font.Font(None, 20)
+    string_2 = font_2.render(intro_text[1], True, pygame.Color('#C0C0C0'))
+    place_2 = (10, 10)
+    clock = pygame.time.Clock()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or pygame.key.get_pressed()[pygame.K_ESCAPE]:
+                terminate()
+            if pygame.key.get_pressed()[pygame.K_SPACE]:
+                pygame.mixer.music.stop()
+                return
+        font_size += speed
+        x += -speed * 5
+        if font_size == 38:
+            speed = -1
+        elif font_size == 24:
+            speed = 1
+        screen.blit(fon, (0, 0))
+        place_1 = (x, y)
+        screen.blit(string_2, place_2)
+        font = pygame.font.SysFont('comicsansms', font_size)
+        string = font.render(intro_text[0], True, pygame.Color('#C0C0C0'))
+        screen.blit(string, place_1)
+
+        pygame.display.flip()
+        clock.tick(FPS)
 
 
 def start_level_1():
@@ -658,7 +662,7 @@ def start_level_1():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 end_on = False
-            if pygame.key.get_pressed()[pygame.K_SPACE]:
+            if pygame.key.get_pressed()[pygame.K_SPACE] and end_screen.stop:
                 start_level_1()
                 return
         screen.blit(fon, (0, 0))
@@ -935,7 +939,7 @@ def start_level_2(ship):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 end_on = False
-            if pygame.key.get_pressed()[pygame.K_SPACE]:
+            if pygame.key.get_pressed()[pygame.K_SPACE] and end_screen.stop:
                 start_level_1()
                 return
         screen.blit(fon, (0, 0))
@@ -957,6 +961,7 @@ def start_level_3(ship):
     enemy_bullets = pygame.sprite.Group()
     bullets = pygame.sprite.Group()
     # Флаги
+    f = False
     running = True
     # Переменные
     clock = pygame.time.Clock()
@@ -964,6 +969,9 @@ def start_level_3(ship):
     new_ship = Ship(all_sprites)
     new_ship.health = ship.health
     new_ship.shield = ship.shield
+    if new_ship.shield:
+        f = True
+        shield = Shield(all_sprites)
     # Спрайты
     fon = pygame.transform.scale(load_image('level_3/background.jpg'), (WIDTH, HEIGHT))
     # Границы для вражеского корабля
@@ -979,6 +987,10 @@ def start_level_3(ship):
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEMOTION:
+                if new_ship.shield:
+                    shield.move(event.pos)
+                elif f:
+                    shield.kill()
                 new_ship.move(event.pos)
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and enemyship.stop:
                 bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
@@ -994,7 +1006,6 @@ def start_level_3(ship):
         all_sprites.update()
         pygame.display.flip()
         clock.tick(FPS)
-
 
 
 if __name__ == '__main__':
