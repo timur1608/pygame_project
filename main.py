@@ -181,7 +181,7 @@ class HitByEnemy(pygame.sprite.Sprite):
     image_of_hit = load_image('other/laserGreenShot.png')
 
     def __init__(self, *group, args):
-        super().__init__(group)
+        super().__init__(*group)
         self.image = HitByEnemy.image_of_hit
         self.rect = self.image.get_rect()
         self.rect.x = args[0]
@@ -389,6 +389,9 @@ class BigEnemyShip(pygame.sprite.Sprite):
                 self.choice = 0
                 self.right = True
                 self.left = False
+    def update(self):
+        if self.border_2:
+            pass
 
 
 class Meteor(pygame.sprite.Sprite):
@@ -655,6 +658,7 @@ def start_level_1():
             return
         if pygame.time.get_ticks() > 29000 and not f:
             pygame.mixer.music.load('music/bensound-scifi.mp3')
+            pygame.mixer.music.set_volume(0.9)
             pygame.mixer.music.play()
             f = True
         if pygame.time.get_ticks() % 1000 in range(-100, 100):
@@ -713,6 +717,7 @@ def win_screen(ship):
     manager = pygame_gui.UIManager((WIDTH, HEIGHT))
     pygame.mixer.music.load(
         'sound/ship/456968__funwithsound__success-resolution-video-game-fanfare-sound-effect.mp3')
+    pygame.mixer.music.set_volume(0.8)
     pygame.mixer.music.play()
     # Флаги
     buttons_on = False
