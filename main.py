@@ -935,6 +935,9 @@ def start_level_2(ship):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 end_on = False
+            if pygame.key.get_pressed()[pygame.K_SPACE]:
+                start_level_1()
+                return
         screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
         all_sprites.update()
