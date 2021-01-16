@@ -784,7 +784,7 @@ def win_screen(ship):
                             print(Bullet.speed)
                     if event.ui_element == shield_button:
                         if winsc.count > 0 and ship.shield == 0:
-                            ship.shield = 1
+                            ship.shield = 2
                             winsc.count -= 1
                             print(ship.shield)
                     if event.ui_element == next_button:
