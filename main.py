@@ -66,6 +66,7 @@ class Ship(pygame.sprite.Sprite):
         self.angle = 1
         self.rect.x = 430
         self.rect.y = 440
+        self.group = group
 
         self.health = 2
         self.damage = 1
@@ -114,12 +115,14 @@ class Ship(pygame.sprite.Sprite):
             self.death = True
         if self.bullets:
             if pygame.sprite.spritecollideany(self, self.bullets):
+                bullet = pygame.sprite.spritecollideany(self, self.bullets)
                 if self.shield:
                     self.shield -= 1
                 else:
                     self.health -= 1
                 Ship.hit_sound.play()
                 pygame.sprite.spritecollide(self, self.bullets, True)
+                hit = HitByEnemy(self.group, args=(bullet.rect.x, bullet.rect.y))
 
 
 class Shield(pygame.sprite.Sprite):
@@ -140,7 +143,6 @@ class Bullet(pygame.sprite.Sprite):
     image = pygame.transform.scale(load_image('other/laserRed.png'), (7, 50))
     sound_of_gun = pygame.mixer.Sound('sound/gun/laser-gun-single-shot_zyz4u34u.mp3')
     sound_of_gun.set_volume(0.25)
-    image_of_hit = load_image('other/laserRedShot.png')
 
     def __init__(self, *group, args, direction):
         super().__init__(*group)
@@ -157,6 +159,38 @@ class Bullet(pygame.sprite.Sprite):
 
     def update(self):
         self.rect = self.rect.move(0, -self.speed)
+
+
+class HitByShip(pygame.sprite.Sprite):
+    image_of_hit = load_image('other/laserRedShot.png')
+
+    def __init__(self, *group, args):
+        super().__init__(*group)
+        self.image = HitByShip.image_of_hit
+        self.rect = self.image.get_rect()
+        self.rect.x = args[0]
+        self.rect.y = args[1] - 30
+        self.tick_time = pygame.time.get_ticks()
+
+    def update(self):
+        if (pygame.time.get_ticks() - self.tick_time) > 100:
+            self.kill()
+
+
+class HitByEnemy(pygame.sprite.Sprite):
+    image_of_hit = load_image('other/laserGreenShot.png')
+
+    def __init__(self, *group, args):
+        super().__init__(group)
+        self.image = HitByEnemy.image_of_hit
+        self.rect = self.image.get_rect()
+        self.rect.x = args[0]
+        self.rect.y = args[1] + 30
+        self.tick_time = pygame.time.get_ticks()
+
+    def update(self):
+        if (pygame.time.get_ticks() - self.tick_time) > 100:
+            self.kill()
 
 
 class Base(pygame.sprite.Sprite):
@@ -202,6 +236,7 @@ class EnemyShip(pygame.sprite.Sprite):
 
     def __init__(self, *group, x, y, border=None, bullets, ship):
         super().__init__(*group)
+        self.group = group
         self.image = EnemyShip.image
         self.border = border
         self.bullets = bullets
@@ -231,8 +266,10 @@ class EnemyShip(pygame.sprite.Sprite):
             if not pygame.sprite.spritecollideany(self, self.border):
                 self.rect = self.rect.move(0, self.speed)
         if pygame.sprite.spritecollideany(self, self.bullets):
+            bullet = pygame.sprite.spritecollideany(self, self.bullets)
             self.health -= 1
             pygame.sprite.spritecollide(self, self.bullets, True)
+            hit = HitByShip(self.group, args=(bullet.rect.x, bullet.rect.y))
             EnemyShip.sound_of_hit.play()
         if pygame.sprite.collide_mask(self, self.ship):
             self.ship.health -= 1
@@ -640,7 +677,7 @@ def start_level_1():
             timer = f'Осталось еще продержаться: {40 - (time - first_time) // 1000}'
             timer = font.render(timer, True, pygame.Color('#C0C0C0'))
             screen.blit(timer, (x3, 0))
-            if 40 - (time - first_time) // 1000 == 0:
+            if 1 - (time - first_time) // 1000 == 0:
                 win = True
         screen.blit(text, (x2, 0))
         screen.blit(health_ship, (650, 435))
