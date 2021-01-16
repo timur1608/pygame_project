@@ -306,6 +306,7 @@ class BulletOfEnemy(pygame.sprite.Sprite):
 
 class BigEnemyShip(pygame.sprite.Sprite):
     sound_of_flying = pygame.mixer.Sound('sound/ship/ship_fly.mp3')
+    sound_of_hit = pygame.mixer.Sound('sound/ship/zvuk-porajeniya-tseli-blasterom-na-sms-7045.mp3')
     images = list()
     for i in range(1, 10):
         image = pygame.transform.scale(load_image(f'level_3/ship/redfighter000{i}.png'), (258, 288))
@@ -314,6 +315,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
     def __init__(self, *group, border_1=None, border_2=None, borders=None, bullets = None):
         super().__init__(*group)
         BigEnemyShip.sound_of_flying.play(0)
+        self.group = group
         self.bullets = bullets
         self.image = BigEnemyShip.images[4]
         self.rect = self.image.get_rect()
@@ -325,7 +327,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.border_2 = border_2
         self.speed = 4
         self.rect.x = 900
-        self.health = 100
+        self.health = 1
         self.rect.y = 400
         self.stop = False
         self.left = False
@@ -394,8 +396,15 @@ class BigEnemyShip(pygame.sprite.Sprite):
 
     def update(self):
         if self.border_2:
-            if pygame.sprite.spritecollideany(self, self.bullets):
+            if self.health <= 0:
+                if not pygame.sprite.spritecollideany(self, self.border):
+                    self.rect = self.rect.move(0, -self.speed)
+            elif pygame.sprite.spritecollideany(self, self.bullets):
+                bullet = pygame.sprite.spritecollideany(self, self.bullets)
                 self.health -= 1
+                pygame.sprite.spritecollide(self, self.bullets, True)
+                hit = HitByShip(self.group, args=(bullet.rect.x, bullet.rect.y - 50))
+                EnemyShip.sound_of_hit.play()
 
 
 class Meteor(pygame.sprite.Sprite):
@@ -793,9 +802,9 @@ def win_screen(ship):
                     if event.ui_element == next_button:
                         running = False
                         if CongratulationScreen.level == 1:
-                            start_level_2(ship)
-                        elif CongratulationScreen.level == 2:
                             start_level_3(ship)
+                        elif CongratulationScreen.level == 2:
+                            start_level_2(ship)
                         return
 
         manager.update(time_delta)
