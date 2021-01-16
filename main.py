@@ -389,6 +389,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
                 self.choice = 0
                 self.right = True
                 self.left = False
+
     def update(self):
         if self.border_2:
             pass
