@@ -311,9 +311,10 @@ class BigEnemyShip(pygame.sprite.Sprite):
         image = pygame.transform.scale(load_image(f'level_3/ship/redfighter000{i}.png'), (258, 288))
         images.append(image)
 
-    def __init__(self, *group, border_1=None, border_2=None, borders=None):
+    def __init__(self, *group, border_1=None, border_2=None, borders=None, bullets = None):
         super().__init__(*group)
         BigEnemyShip.sound_of_flying.play(0)
+        self.bullets = bullets
         self.image = BigEnemyShip.images[4]
         self.rect = self.image.get_rect()
         self.count = 0
@@ -324,6 +325,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.border_2 = border_2
         self.speed = 4
         self.rect.x = 900
+        self.health = 100
         self.rect.y = 400
         self.stop = False
         self.left = False
@@ -392,7 +394,8 @@ class BigEnemyShip(pygame.sprite.Sprite):
 
     def update(self):
         if self.border_2:
-            pass
+            if pygame.sprite.spritecollideany(self, self.bullets):
+                self.health -= 1
 
 
 class Meteor(pygame.sprite.Sprite):
@@ -659,7 +662,7 @@ def start_level_1():
             return
         if pygame.time.get_ticks() > 29000 and not f:
             pygame.mixer.music.load('music/bensound-scifi.mp3')
-            pygame.mixer.music.set_volume(0.9)
+            pygame.mixer.music.set_volume(0.8)
             pygame.mixer.music.play()
             f = True
         if pygame.time.get_ticks() % 1000 in range(-100, 100):
@@ -718,7 +721,7 @@ def win_screen(ship):
     manager = pygame_gui.UIManager((WIDTH, HEIGHT))
     pygame.mixer.music.load(
         'sound/ship/456968__funwithsound__success-resolution-video-game-fanfare-sound-effect.mp3')
-    pygame.mixer.music.set_volume(0.8)
+    pygame.mixer.music.set_volume(0.5)
     pygame.mixer.music.play()
     # Флаги
     buttons_on = False
@@ -1024,7 +1027,7 @@ def start_level_3(ship):
     hor_line_2 = HorizonalBorders(hor_lines, x=-60)
     # Вражеский корабль
     enemyship = BigEnemyShip(all_sprites, border_1=ver_lines_1, border_2=ver_lines_2,
-                             borders=hor_lines)
+                             borders=hor_lines, bullets=bullets)
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
