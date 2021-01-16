@@ -612,7 +612,7 @@ def start_level_1():
         if win:
             win_screen(ship)
             return
-        if pygame.time.get_ticks() > 28000 and not f:
+        if pygame.time.get_ticks() > 29000 and not f:
             pygame.mixer.music.load('music/bensound-scifi.mp3')
             pygame.mixer.music.play()
             f = True
@@ -658,6 +658,9 @@ def start_level_1():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 end_on = False
+            if pygame.key.get_pressed()[pygame.K_SPACE]:
+                start_level_1()
+                return
         screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
         all_sprites.update()
@@ -729,7 +732,7 @@ def win_screen(ship):
                             print(ship.health)
                     if event.ui_element == speed_button:
                         if winsc.count > 0:
-                            Bullet.speed += 3
+                            Bullet.speed += 2
                             winsc.count -= 1
                             print(Bullet.speed)
                     if event.ui_element == shield_button:
