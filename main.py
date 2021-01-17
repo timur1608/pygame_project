@@ -312,7 +312,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
         image = pygame.transform.scale(load_image(f'level_3/ship/redfighter000{i}.png'), (258, 288))
         images.append(image)
 
-    def __init__(self, *group, border_1=None, border_2=None, borders=None, bullets = None):
+    def __init__(self, *group, border_1=None, border_2=None, borders=None, bullets=None):
         super().__init__(*group)
         BigEnemyShip.sound_of_flying.play(0)
         self.group = group
@@ -333,6 +333,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.left = False
         self.right = True
         self.f = False
+        self.stage1 = True
         self.stage2 = False
         self.choice = 0
         self.orig_image = self.image.copy()
@@ -350,14 +351,23 @@ class BigEnemyShip(pygame.sprite.Sprite):
                 self.rect = self.rect.move(-self.speed, -self.speed)
             else:
                 self.rotate(180)
-                self.stop = True
+                self.stage2 = True
+                self.stage1 = False
 
     def stage_2(self):
         if self.border_2:
-            if not pygame.sprite.spritecollideany(self, self.border_2):
+            if self.health <= 0:
+                if not pygame.sprite.spritecollideany(self, self.border):
+                    self.rect = self.rect.move(0, -self.speed)
+            elif pygame.sprite.spritecollideany(self, self.bullets):
+                bullet = pygame.sprite.spritecollideany(self, self.bullets)
+                self.health -= 1
+                pygame.sprite.spritecollide(self, self.bullets, True)
+                hit = HitByShip(self.group, args=(bullet.rect.x, bullet.rect.y - 50))
+                EnemyShip.sound_of_hit.play()
+            elif not pygame.sprite.spritecollideany(self, self.border_2):
                 self.rect = self.rect.move(0, self.speed)
             else:
-                self.stage2 = True
                 if self.borders:
                     if pygame.sprite.spritecollideany(self, self.borders):
                         self.vx = -self.vx
@@ -394,17 +404,26 @@ class BigEnemyShip(pygame.sprite.Sprite):
                 self.right = True
                 self.left = False
 
-    def update(self):
-        if self.border_2:
-            if self.health <= 0:
-                if not pygame.sprite.spritecollideany(self, self.border):
-                    self.rect = self.rect.move(0, -self.speed)
-            elif pygame.sprite.spritecollideany(self, self.bullets):
-                bullet = pygame.sprite.spritecollideany(self, self.bullets)
-                self.health -= 1
-                pygame.sprite.spritecollide(self, self.bullets, True)
-                hit = HitByShip(self.group, args=(bullet.rect.x, bullet.rect.y - 50))
-                EnemyShip.sound_of_hit.play()
+    # def stage_3(self):
+    #     if self.border_2:
+    #         if self.health <= 0:
+    #             if not pygame.sprite.spritecollideany(self, self.border):
+    #                 self.rect = self.rect.move(0, -self.speed)
+    #         elif pygame.sprite.spritecollideany(self, self.bullets):
+    #             bullet = pygame.sprite.spritecollideany(self, self.bullets)
+    #             self.health -= 1
+    #             pygame.sprite.spritecollide(self, self.bullets, True)
+    #             hit = HitByShip(self.group, args=(bullet.rect.x, bullet.rect.y - 50))
+    #             EnemyShip.sound_of_hit.play()
+
+
+class BulletOfBigEnemyShip(pygame.sprite.Sprite):
+    image = load_image('other/laserGreen.png')
+    sound = pygame.mixer.Sound('sound/gun/laser-blast-descend_gy7c5deo.mp3')
+    sound.set_volume(0.2)
+
+    def __init__(self, *group):
+        super().__init__(*group)
 
 
 class Meteor(pygame.sprite.Sprite):
@@ -1047,16 +1066,16 @@ def start_level_3(ship):
                 elif f:
                     shield.kill()
                 new_ship.move(event.pos)
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and enemyship.stop:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and enemyship.stage2:
                 bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
                 bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
                 bullets.add(bullet_1)
                 bullets.add(bullet_2)
         screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
-        if not enemyship.stop:
+        if enemyship.stage1:
             enemyship.stage_1()
-        else:
+        elif enemyship.stage2:
             enemyship.stage_2()
         all_sprites.update()
         pygame.display.flip()
