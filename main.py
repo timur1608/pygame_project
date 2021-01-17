@@ -327,7 +327,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.border_2 = border_2
         self.speed = 4
         self.rect.x = 900
-        self.health = 1
+        self.health = 100
         self.rect.y = 400
         self.stop = False
         self.left = False
@@ -422,8 +422,25 @@ class BulletOfBigEnemyShip(pygame.sprite.Sprite):
     sound = pygame.mixer.Sound('sound/gun/laser-blast-descend_gy7c5deo.mp3')
     sound.set_volume(0.2)
 
-    def __init__(self, *group):
+    def __init__(self, *group, pos, direction=None):
         super().__init__(*group)
+        self.speed = 8
+        self.image = BulletOfBigEnemyShip.image
+        self.rect = self.image.get_rect()
+        self.vy = self.speed
+        if direction == 'right':
+            self.rect.x = pos[0] + BigEnemyShip.image.get_size()[0] - 40
+            self.rect.y = pos[1] + 150
+        elif direction == 'left':
+            self.rect.x = pos[0] + 40
+            self.rect.y = pos[1] + 150
+        elif direction == 'middle':
+            self.rect.x = pos[0] + BigEnemyShip.image.get_size()[0] // 2 - 10
+            self.rect.y = pos[1] + BigEnemyShip.image.get_size()[1] - 50
+        BulletOfBigEnemyShip.sound.play(0)
+
+    def update(self) -> None:
+        self.rect = self.rect.move(0, self.vy)
 
 
 class Meteor(pygame.sprite.Sprite):
@@ -1037,12 +1054,15 @@ def start_level_3(ship):
     # Флаги
     f = False
     running = True
+    end_on = False
+    count = 0
     # Переменные
     clock = pygame.time.Clock()
     # Корабль
     new_ship = Ship(all_sprites)
     new_ship.health = ship.health
     new_ship.shield = ship.shield
+    new_ship.bullets = enemy_bullets
     if new_ship.shield:
         f = True
         shield = Shield(all_sprites)
@@ -1053,6 +1073,7 @@ def start_level_3(ship):
     ver_line_2 = VerticalBorders(ver_lines_2, y=180)
     hor_line_1 = HorizonalBorders(hor_lines, x=960)
     hor_line_2 = HorizonalBorders(hor_lines, x=-60)
+    horizontal_border_1 = HorizonalBorders(all_sprites, direction='right')
     # Вражеский корабль
     enemyship = BigEnemyShip(all_sprites, border_1=ver_lines_1, border_2=ver_lines_2,
                              borders=hor_lines, bullets=bullets)
@@ -1066,6 +1087,8 @@ def start_level_3(ship):
                 elif f:
                     shield.kill()
                 new_ship.move(event.pos)
+                if new_ship.health == 1:
+                    new_ship.image = Ship.image_damaged_ship
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and enemyship.stage2:
                 bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
                 bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
@@ -1076,10 +1099,45 @@ def start_level_3(ship):
         if enemyship.stage1:
             enemyship.stage_1()
         elif enemyship.stage2:
+            count += 1
+            if count % 15 == 0:
+                bullet_3 = BulletOfBigEnemyShip(all_sprites,
+                                                pos=(enemyship.rect.x, enemyship.rect.y),
+                                                direction='left')
+                bullet_4 = BulletOfBigEnemyShip(all_sprites,
+                                                pos=(enemyship.rect.x, enemyship.rect.y),
+                                                direction='right')
+                bullet_5 = BulletOfBigEnemyShip(all_sprites,
+                                                pos=(enemyship.rect.x, enemyship.rect.y),
+                                                direction='middle')
+                enemy_bullets.add(bullet_3)
+                enemy_bullets.add(bullet_4)
+                enemy_bullets.add(bullet_5)
             enemyship.stage_2()
+        if new_ship.death:
+            Ship.death_sound.play()
+            running = False
+            end_on = True
         all_sprites.update()
         pygame.display.flip()
         clock.tick(FPS)
+
+    end_screen = GameOverScreen(all_sprites, borders=horizontal_border_1)
+    pygame.mixer.music.load('music/539674__jhyland__game-over.mp3')
+    pygame.mixer.music.play(1)
+    while end_on:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                end_on = False
+            if pygame.key.get_pressed()[pygame.K_SPACE] and end_screen.stop:
+                start_level_1()
+                return
+        screen.blit(fon, (0, 0))
+        all_sprites.draw(screen)
+        all_sprites.update()
+        pygame.display.flip()
+        clock.tick(FPS)
+
 
 
 if __name__ == '__main__':
