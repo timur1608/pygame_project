@@ -276,6 +276,19 @@ class EnemyShip(pygame.sprite.Sprite):
             self.health -= 1
 
 
+class UFO(pygame.sprite.Sprite):
+    image = load_image('other/enemyUFO.png')
+
+    def __init__(self, *group):
+        super().__init__(*group)
+        self.group = group
+        self.image = UFO.image
+        self.rect = self.image.get_rect()
+
+    def stage_1(self):
+        pass
+
+
 class BulletOfEnemy(pygame.sprite.Sprite):
     image = load_image('other/laserGreen.png')
     sound = pygame.mixer.Sound('sound/gun/laser-blast-descend_gy7c5deo.mp3')
@@ -335,6 +348,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.f = False
         self.stage1 = True
         self.stage2 = False
+        self.stage3 = False
         self.choice = 0
         self.orig_image = self.image.copy()
         self.orig_center = self.rect.center
@@ -359,6 +373,9 @@ class BigEnemyShip(pygame.sprite.Sprite):
             if self.health <= 0:
                 if not pygame.sprite.spritecollideany(self, self.border):
                     self.rect = self.rect.move(0, -self.speed)
+                else:
+                    self.stage2 = False
+                    self.stage3 = True
             elif pygame.sprite.spritecollideany(self, self.bullets):
                 bullet = pygame.sprite.spritecollideany(self, self.bullets)
                 self.health -= 1
@@ -373,6 +390,9 @@ class BigEnemyShip(pygame.sprite.Sprite):
                         self.vx = -self.vx
                     self.rect = self.rect.move(self.vx, 0)
                     self.move()
+
+    def stage_3(self):
+        pass
 
     def rotate(self, angle, orig_image=None):
         self.orig_center = self.rect.center
@@ -1089,7 +1109,8 @@ def start_level_3(ship):
                 new_ship.move(event.pos)
                 if new_ship.health == 1:
                     new_ship.image = Ship.image_damaged_ship
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and enemyship.stage2:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and (
+                    enemyship.stage2 or enemyship.stage3):
                 bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
                 bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
                 bullets.add(bullet_1)
@@ -1114,6 +1135,8 @@ def start_level_3(ship):
                 enemy_bullets.add(bullet_4)
                 enemy_bullets.add(bullet_5)
             enemyship.stage_2()
+        elif enemyship.stage3:
+            enemyship.stage_3()
         if new_ship.death:
             Ship.death_sound.play()
             running = False
@@ -1137,7 +1160,6 @@ def start_level_3(ship):
         all_sprites.update()
         pygame.display.flip()
         clock.tick(FPS)
-
 
 
 if __name__ == '__main__':
