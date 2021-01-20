@@ -277,16 +277,21 @@ class EnemyShip(pygame.sprite.Sprite):
 
 
 class UFO(pygame.sprite.Sprite):
-    image = load_image('other/enemyUFO.png')
+    image = pygame.transform.scale(load_image('other/enemyUFO.png'), (45, 45))
 
-    def __init__(self, *group):
+    def __init__(self, *group, border, x, y):
         super().__init__(*group)
         self.group = group
         self.image = UFO.image
         self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.border = border
+        self.vy = 4
 
-    def stage_1(self):
-        pass
+    def move(self):
+        if not pygame.sprite.spritecollideany(self, self.border):
+            self.rect = self.rect.move(0, self.vy)
 
 
 class BulletOfEnemy(pygame.sprite.Sprite):
@@ -340,7 +345,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.border_2 = border_2
         self.speed = 4
         self.rect.x = 900
-        self.health = 100
+        self.health = 1
         self.rect.y = 400
         self.stop = False
         self.left = False
@@ -1068,6 +1073,7 @@ def start_level_3(ship):
     all_sprites = pygame.sprite.Group()
     ver_lines_1 = pygame.sprite.Group()
     ver_lines_2 = pygame.sprite.Group()
+    ver_lines_3 = pygame.sprite.Group()
     hor_lines = pygame.sprite.Group()
     enemy_bullets = pygame.sprite.Group()
     bullets = pygame.sprite.Group()
@@ -1091,12 +1097,18 @@ def start_level_3(ship):
     # Границы для вражеского корабля
     ver_line_1 = VerticalBorders(ver_lines_1, y=-400)
     ver_line_2 = VerticalBorders(ver_lines_2, y=180)
+    ver_line_3 = VerticalBorders(ver_lines_3, y=70)
     hor_line_1 = HorizonalBorders(hor_lines, x=960)
     hor_line_2 = HorizonalBorders(hor_lines, x=-60)
     horizontal_border_1 = HorizonalBorders(all_sprites, direction='right')
     # Вражеский корабль
     enemyship = BigEnemyShip(all_sprites, border_1=ver_lines_1, border_2=ver_lines_2,
                              borders=hor_lines, bullets=bullets)
+    # Вражеские юниты
+    ufo_1 = UFO(all_sprites, border=ver_lines_3, x=60, y=-200)
+    ufo_2 = UFO(all_sprites, border=ver_lines_3, x=300, y=-200)
+    ufo_3 = UFO(all_sprites, border=ver_lines_3, x=600, y=-200)
+    ufo_4 = UFO(all_sprites, border=ver_lines_3, x=840, y=-200)
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -1136,7 +1148,10 @@ def start_level_3(ship):
                 enemy_bullets.add(bullet_5)
             enemyship.stage_2()
         elif enemyship.stage3:
-            enemyship.stage_3()
+            ufo_1.move()
+            ufo_2.move()
+            ufo_3.move()
+            ufo_4.move()
         if new_ship.death:
             Ship.death_sound.play()
             running = False
