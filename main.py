@@ -1132,6 +1132,8 @@ def start_level_3(ship):
                 bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
                 bullets.add(bullet_1)
                 bullets.add(bullet_2)
+            if new_ship.health == 1:
+                new_ship.image = Ship.image_damaged_ship
         screen.blit(fon, (0, 0))
         all_sprites.draw(screen)
         if enemyship.stage1:
@@ -1166,8 +1168,6 @@ def start_level_3(ship):
             ufo_1.count += 1
         else:
             ufo_1.count += 1
-        if new_ship.health == 1:
-            new_ship.image = Ship.image_damaged_ship
         if new_ship.death:
             Ship.death_sound.play()
             running = False
