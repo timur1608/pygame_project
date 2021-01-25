@@ -285,6 +285,7 @@ class UFO(pygame.sprite.Sprite):
         self.group = group
         self.image = UFO.image
         self.rect = self.image.get_rect()
+
         self.rect.x = x
         self.rect.y = y
         self.health = 15
@@ -302,7 +303,10 @@ class UFO(pygame.sprite.Sprite):
             self.stop = True
 
     def update(self):
-        if pygame.sprite.spritecollideany(self, self.bullets):
+        if self.health <= 0:
+            self.kill()
+            EnemyShip.sound_of_crack.play(0)
+        elif pygame.sprite.spritecollideany(self, self.bullets):
             bullet = pygame.sprite.spritecollideany(self, self.bullets)
             pygame.sprite.spritecollide(self, self.bullets, True)
             hit = HitByShip(self.group, args=(bullet.rect.x, bullet.rect.y))
