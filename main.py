@@ -354,9 +354,10 @@ class BigEnemyShip(pygame.sprite.Sprite):
         image = pygame.transform.scale(load_image(f'level_3/ship/redfighter000{i}.png'), (258, 288))
         images.append(image)
 
-    def __init__(self, *group, border_1=None, border_2=None, borders=None, bullets=None):
+    def __init__(self, *group, border_1=None, border_2=None, borders=None, bullets=None, ship=None):
         super().__init__(*group)
         BigEnemyShip.sound_of_flying.play(0)
+        self.ship = ship
         self.group = group
         self.bullets = bullets
         self.image = BigEnemyShip.images[4]
@@ -425,6 +426,8 @@ class BigEnemyShip(pygame.sprite.Sprite):
             self.image = BigEnemyShip.images[4]
             self.rotate(180)
             self.rect = self.rect.move(0, self.speed)
+        else:
+            self.rect.x = self.ship.rect.x - 50
 
     def rotate(self, angle, orig_image=None):
         self.orig_center = self.rect.center
@@ -1118,7 +1121,7 @@ def start_level_3(ship):
     horizontal_border_1 = HorizonalBorders(all_sprites, direction='right')
     # Вражеский корабль
     enemyship = BigEnemyShip(all_sprites, border_1=ver_lines_1, border_2=ver_lines_2,
-                             borders=hor_lines, bullets=bullets)
+                             borders=hor_lines, bullets=bullets, ship=new_ship)
     # Вражеские юниты
     ufo_1 = UFO(all_sprites, border=ver_lines_3, x=60, y=-200, bullets=bullets)
     ufo_2 = UFO(all_sprites, border=ver_lines_3, x=300, y=-200, bullets=bullets)
