@@ -285,7 +285,7 @@ class UFO(pygame.sprite.Sprite):
         self.group = group
         self.image = UFO.image
         self.rect = self.image.get_rect()
-
+        self.death = False
         self.rect.x = x
         self.rect.y = y
         self.health = 15
@@ -305,6 +305,7 @@ class UFO(pygame.sprite.Sprite):
     def update(self):
         if self.health <= 0:
             self.kill()
+            self.death = True
             EnemyShip.sound_of_crack.play(0)
         elif pygame.sprite.spritecollideany(self, self.bullets):
             bullet = pygame.sprite.spritecollideany(self, self.bullets)
@@ -420,7 +421,10 @@ class BigEnemyShip(pygame.sprite.Sprite):
                     self.move()
 
     def stage_3(self):
-        pass
+        if not pygame.sprite.spritecollideany(self, self.border_2):
+            self.image = BigEnemyShip.images[4]
+            self.rotate(180)
+            self.rect = self.rect.move(0, self.speed)
 
     def rotate(self, angle, orig_image=None):
         self.orig_center = self.rect.center
@@ -1163,15 +1167,18 @@ def start_level_3(ship):
             ufo_2.move()
             ufo_3.move()
             ufo_4.move()
-        if ufo_1.stop and ufo_1.count % 100 == 0 and ufo_2.stop and ufo_3.stop and ufo_4.stop:
+        if ufo_1.stop and ufo_1.count % 60 == 0 and ufo_2.stop and ufo_3.stop and ufo_4.stop:
             for i in [ufo_1, ufo_2, ufo_3, ufo_4]:
-                for j in [270, 315, 0, 45, 90]:
-                    bullet_6 = BulletOfEnemy(all_sprites, angle=j, enemy=i)
-                    bullet_6.rotate()
-                    enemy_bullets.add(bullet_6)
+                if not i.death:
+                    for j in [270, 315, 0, 45, 90]:
+                        bullet_6 = BulletOfEnemy(all_sprites, angle=j, enemy=i)
+                        bullet_6.rotate()
+                        enemy_bullets.add(bullet_6)
             ufo_1.count += 1
         else:
             ufo_1.count += 1
+        if ufo_1.death and ufo_2.death and ufo_3.death and ufo_4.death:
+            enemyship.stage_3()
         if new_ship.death:
             Ship.death_sound.play()
             running = False
