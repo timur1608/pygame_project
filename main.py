@@ -18,6 +18,20 @@ def terminate():
     sys.exit()
 
 
+def load_level():
+    with open('level.txt', 'r') as file:
+        reader = file.readline()
+        return reader
+
+
+def next_level(current_level):
+    with open('level.txt', 'w') as file:
+        if current_level == 3:
+            file.write('1')
+        else:
+            file.write(str(current_level + 1))
+
+
 def load_image(name, colorkey=None):
     fullname = os.path.join('data', name)
     if not os.path.isfile(fullname):
@@ -427,7 +441,10 @@ class BigEnemyShip(pygame.sprite.Sprite):
             self.rotate(180)
             self.rect = self.rect.move(0, self.speed)
         else:
-            self.rect.x = self.ship.rect.x - 50
+            old_rect_x = self.rect.x
+            self.rect.x = self.ship.rect.x - 100
+            if self.rect.x > old_rect_x:
+                pass
 
     def rotate(self, angle, orig_image=None):
         self.orig_center = self.rect.center
@@ -720,89 +737,95 @@ def start_level_1():
     win_sound = pygame.mixer.Sound(
         'sound/ship/456968__funwithsound__success-resolution-video-game-fanfare-sound-effect.mp3')
     # Основной цикл
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+    if load_level() == '1':
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                if event.type == pygame.MOUSEMOTION and game_on:
+                    ship.move(event.pos)
+                if pygame.key.get_pressed()[pygame.K_SPACE]:
+                    if not start_time:
+                        start_time = pygame.time.get_ticks()
+                    game_on = True
+                    speed = 3
+                if game_on and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not ship.stop:
+                    bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
+                    bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
+                    bullets.add(bullet_1)
+                    bullets.add(bullet_2)
+
+            if ship.health == 1:
+                ship.image = Ship.image_damaged_ship
+            elif ship.health == 0:
+                Ship.death_sound.play()
+                ship.death = True
+            if ship.death or base.death:
+                end_on = True
                 running = False
-            if event.type == pygame.MOUSEMOTION and game_on:
-                ship.move(event.pos)
-            if pygame.key.get_pressed()[pygame.K_SPACE]:
-                if not start_time:
-                    start_time = pygame.time.get_ticks()
-                game_on = True
-                speed = 3
-            if game_on and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not ship.stop:
-                bullet_1 = Bullet(all_sprites, args=event.pos, direction='left')
-                bullet_2 = Bullet(all_sprites, args=event.pos, direction='right')
-                bullets.add(bullet_1)
-                bullets.add(bullet_2)
-
-        if ship.health == 1:
-            ship.image = Ship.image_damaged_ship
-        elif ship.health == 0:
-            Ship.death_sound.play()
-            ship.death = True
-        if ship.death or base.death:
-            end_on = True
-            running = False
-        if win:
-            win_screen(ship)
-            return
-        if pygame.time.get_ticks() > 29000 and not f:
-            pygame.mixer.music.load('music/bensound-scifi.mp3')
-            pygame.mixer.music.set_volume(0.8)
-            pygame.mixer.music.play()
-            f = True
-        if pygame.time.get_ticks() % 1000 in range(-100, 100):
-            SpeedLine(all_sprites)
-        if pygame.time.get_ticks() % 400 in range(-40,
-                                                  40) and game_on and pygame.time.get_ticks() - start_time > 2000:
-            Meteor(all_sprites, base=base, ship=ship, bullets=bullets)
-
-        screen.blit(fon, (0, 0))
-        if x1 + WIDTH > 0:
-            x1 -= speed
-            x2 -= speed
-        if x3 > 0:
-            x3 -= speed
-        screen.blit(string, (x1, 0))
-        if game_on:
-            time = pygame.time.get_ticks()
-            if not first_time:
-                first_time = time
-            timer = f'Осталось еще продержаться: {40 - (time - first_time) // 1000}'
-            timer = font.render(timer, True, pygame.Color('#C0C0C0'))
-            screen.blit(timer, (x3, 0))
-            if 1 - (time - first_time) // 1000 == 0:
-                win = True
-        screen.blit(text, (x2, 0))
-        screen.blit(health_ship, (650, 435))
-        screen.blit(health_base, (5, 90))
-        ship.drawhp()
-        base.drawhp()
-        if not game_on:
-            screen.blit(warning, (250, 250))
-        pygame.mouse.set_visible(False)
-        all_sprites.draw(screen)
-        all_sprites.update()
-        pygame.display.flip()
-        clock.tick(FPS)
-
-    end_screen = GameOverScreen(all_sprites, borders=horizontal_border_1)
-    pygame.mixer.music.load('music/539674__jhyland__game-over.mp3')
-    pygame.mixer.music.play(1)
-    while end_on:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                end_on = False
-            if pygame.key.get_pressed()[pygame.K_SPACE] and end_screen.stop:
-                start_level_1()
+            if win:
+                next_level(1)
+                win_screen(ship)
                 return
-        screen.blit(fon, (0, 0))
-        all_sprites.draw(screen)
-        all_sprites.update()
-        pygame.display.flip()
-        clock.tick(FPS)
+            if pygame.time.get_ticks() > 29000 and not f:
+                pygame.mixer.music.load('music/bensound-scifi.mp3')
+                pygame.mixer.music.set_volume(0.8)
+                pygame.mixer.music.play()
+                f = True
+            if pygame.time.get_ticks() % 1000 in range(-100, 100):
+                SpeedLine(all_sprites)
+            if pygame.time.get_ticks() % 400 in range(-40,
+                                                      40) and game_on and pygame.time.get_ticks() - start_time > 2000:
+                Meteor(all_sprites, base=base, ship=ship, bullets=bullets)
+
+            screen.blit(fon, (0, 0))
+            if x1 + WIDTH > 0:
+                x1 -= speed
+                x2 -= speed
+            if x3 > 0:
+                x3 -= speed
+            screen.blit(string, (x1, 0))
+            if game_on:
+                time = pygame.time.get_ticks()
+                if not first_time:
+                    first_time = time
+                timer = f'Осталось еще продержаться: {40 - (time - first_time) // 1000}'
+                timer = font.render(timer, True, pygame.Color('#C0C0C0'))
+                screen.blit(timer, (x3, 0))
+                if 1 - (time - first_time) // 1000 == 0:
+                    win = True
+            screen.blit(text, (x2, 0))
+            screen.blit(health_ship, (650, 435))
+            screen.blit(health_base, (5, 90))
+            ship.drawhp()
+            base.drawhp()
+            if not game_on:
+                screen.blit(warning, (250, 250))
+            pygame.mouse.set_visible(False)
+            all_sprites.draw(screen)
+            all_sprites.update()
+            pygame.display.flip()
+            clock.tick(FPS)
+
+        end_screen = GameOverScreen(all_sprites, borders=horizontal_border_1)
+        pygame.mixer.music.load('music/539674__jhyland__game-over.mp3')
+        pygame.mixer.music.play(1)
+        while end_on:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    end_on = False
+                if pygame.key.get_pressed()[pygame.K_SPACE] and end_screen.stop:
+                    start_level_1()
+                    return
+            screen.blit(fon, (0, 0))
+            all_sprites.draw(screen)
+            all_sprites.update()
+            pygame.display.flip()
+            clock.tick(FPS)
+    elif load_level() == '2':
+        start_level_2(ship=ship)
+    elif load_level() == '3':
+        start_level_3(ship=ship)
 
 
 def win_screen(ship):
@@ -867,23 +890,20 @@ def win_screen(ship):
                         if winsc.count > 0:
                             ship.health += 1
                             winsc.count -= 1
-                            print(ship.health)
                     if event.ui_element == speed_button:
                         if winsc.count > 0:
                             Bullet.speed += 2
                             winsc.count -= 1
-                            print(Bullet.speed)
                     if event.ui_element == shield_button:
                         if winsc.count > 0 and ship.shield == 0:
                             ship.shield = 2
                             winsc.count -= 1
-                            print(ship.shield)
                     if event.ui_element == next_button:
                         running = False
-                        if CongratulationScreen.level == 1:
-                            start_level_3(ship)
-                        elif CongratulationScreen.level == 2:
+                        if CongratulationScreen.level == 2:
                             start_level_2(ship)
+                        elif CongratulationScreen.level == 3:
+                            start_level_3(ship)
                         return
 
         manager.update(time_delta)
@@ -910,6 +930,7 @@ def start_level_2(ship):
     # Улучшения корабля
     new_ship.health = ship.health
     new_ship.shield = ship.shield
+    pygame.mouse.set_visible(False)
     # Флаги
     running = True
     stage1 = True
@@ -1043,6 +1064,7 @@ def start_level_2(ship):
                     if enemy1.death and enemy2.death and enemy3.death and enemy4.death and enemy5.death:
                         CongratulationScreen.count += 1
                         CongratulationScreen.level += 1
+                        next_level(2)
                         win_screen(new_ship)
                         return
             if new_ship.death:
@@ -1107,6 +1129,7 @@ def start_level_3(ship):
     new_ship.health = ship.health
     new_ship.shield = ship.shield
     new_ship.bullets = enemy_bullets
+    pygame.mouse.set_visible(False)
     if new_ship.shield:
         f = True
         shield = Shield(all_sprites)
