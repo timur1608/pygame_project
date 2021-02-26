@@ -32,6 +32,19 @@ def next_level(current_level):
             file.write(str(current_level + 1))
 
 
+def load_abilities():
+    with open('abilities.txt', 'r') as file:
+        reader = file.read().splitlines()
+        return (reader[0].split(' = ')[-1], reader[1].split(' = ')[-1], reader[2].split(' = ')[-1])
+
+
+def update_abilities(ship):
+    with open('abilities.txt', 'w') as file:
+        file.write(f'health = {ship.health}\n')
+        file.write(f'shield = {ship.shield}\n')
+        file.write(f'speed_bullet = {Bullet.speed}\n')
+
+
 def load_image(name, colorkey=None):
     fullname = os.path.join('data', name)
     if not os.path.isfile(fullname):
@@ -822,10 +835,15 @@ def start_level_1():
             all_sprites.update()
             pygame.display.flip()
             clock.tick(FPS)
-    elif load_level() == '2':
-        start_level_2(ship=ship)
-    elif load_level() == '3':
-        start_level_3(ship=ship)
+    else:
+        abil = load_abilities()
+        ship.health = int(abil[0])
+        ship.shield = int(abil[1])
+        Bullet.speed = int(abil[2])
+        if load_level() == '2':
+            start_level_2(ship=ship)
+        elif load_level() == '3':
+            start_level_3(ship=ship)
 
 
 def win_screen(ship):
@@ -900,9 +918,11 @@ def win_screen(ship):
                             winsc.count -= 1
                     if event.ui_element == next_button:
                         running = False
-                        if CongratulationScreen.level == 2:
+                        level = load_level()
+                        update_abilities(ship)
+                        if level == '2':
                             start_level_2(ship)
-                        elif CongratulationScreen.level == 3:
+                        elif level == '3':
                             start_level_3(ship)
                         return
 
@@ -1065,6 +1085,7 @@ def start_level_2(ship):
                         CongratulationScreen.count += 1
                         CongratulationScreen.level += 1
                         next_level(2)
+                        update_abilities(ship=ship)
                         win_screen(new_ship)
                         return
             if new_ship.death:
@@ -1209,6 +1230,7 @@ def start_level_3(ship):
             Ship.death_sound.play()
             running = False
             end_on = True
+        ship.drawhp()
         all_sprites.update()
         pygame.display.flip()
         clock.tick(FPS)
