@@ -314,7 +314,7 @@ class UFO(pygame.sprite.Sprite):
         self.death = False
         self.rect.x = x
         self.rect.y = y
-        self.health = 1
+        self.health = 15
         self.border = border
         self.vy = 4
         self.stop = False
@@ -395,7 +395,8 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.border_2 = border_2
         self.speed = 4
         self.rect.x = 900
-        self.health = 1
+        self.health_1 = 100
+        self.health_2 = 50
         self.rect.y = 400
         self.stop = False
         self.left = False
@@ -404,6 +405,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.stage1 = True
         self.stage2 = False
         self.stage3 = False
+        self.death = False
         self.choice = 0
         self.orig_image = self.image.copy()
         self.orig_center = self.rect.center
@@ -425,7 +427,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
 
     def stage_2(self):
         if self.border_2:
-            if self.health <= 0:
+            if self.health_1 <= 0:
                 if not pygame.sprite.spritecollideany(self, self.border):
                     self.rect = self.rect.move(0, -self.speed)
                 else:
@@ -433,7 +435,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
                     self.stage3 = True
             elif pygame.sprite.spritecollideany(self, self.bullets):
                 bullet = pygame.sprite.spritecollideany(self, self.bullets)
-                self.health -= 1
+                self.health_1 -= 1
                 pygame.sprite.spritecollide(self, self.bullets, True)
                 hit = HitByShip(self.group, args=(bullet.rect.x, bullet.rect.y - 50))
                 EnemyShip.sound_of_hit.play()
@@ -465,6 +467,14 @@ class BigEnemyShip(pygame.sprite.Sprite):
                 elif self.iter < 0:
                     self.image = BigEnemyShip.images[4:][-self.iter // 5]
                     self.rotate(180, orig_image=self.image)
+            if self.health_2 <= 0:
+                self.death = True
+            if pygame.sprite.spritecollideany(self, self.bullets):
+                bullet = pygame.sprite.spritecollideany(self, self.bullets)
+                self.health_2 -= 1
+                pygame.sprite.spritecollide(self, self.bullets, True)
+                hit = HitByShip(self.group, args=(bullet.rect.x, bullet.rect.y - 50))
+                EnemyShip.sound_of_hit.play()
 
     def rotate(self, angle, orig_image=None):
         self.orig_center = self.rect.center
@@ -495,6 +505,9 @@ class BigEnemyShip(pygame.sprite.Sprite):
                 self.choice = 0
                 self.right = True
                 self.left = False
+    def update(self) -> None:
+        if pygame.sprite.collide_mask(self, self.ship):
+            self.ship.health -= 1
 
 
 class BulletOfBigEnemyShip(pygame.sprite.Sprite):
@@ -619,7 +632,7 @@ class CongratulationScreen(pygame.sprite.Sprite):
     count = 2
     level = 1
 
-    def __init__(self, *group, vertical_borders, ship):
+    def __init__(self, *group, vertical_borders):
         super().__init__(*group)
         self.vertical_borders = vertical_borders
         self.image = pygame.transform.scale(CongratulationScreen.image,
@@ -627,7 +640,6 @@ class CongratulationScreen(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.stop = False
         self.rect.y = 0 - HEIGHT
-        self.ship = ship
         self.count = CongratulationScreen.count
 
     def update(self):
@@ -635,6 +647,21 @@ class CongratulationScreen(pygame.sprite.Sprite):
             self.rect = self.rect.move(0, 10)
         else:
             self.stop = True
+
+
+class EndWinScreen(pygame.sprite.Sprite):
+    image = pygame.transform.scale(load_image('win_background.png'), size)
+
+    def __init__(self, *group, vertical_borders):
+        super(EndWinScreen, self).__init__(*group)
+        self.vertical_borders = vertical_borders
+        self.image = EndWinScreen.image
+        self.rect = self.image.get_rect()
+        self.rect.y = 0 - HEIGHT
+
+    def update(self):
+        if not pygame.sprite.spritecollideany(self, self.vertical_borders):
+            self.rect = self.rect.move(0, 10)
 
 
 class Cursor(pygame.sprite.Sprite):
@@ -861,7 +888,7 @@ def win_screen(ship):
     # Время
     clock = pygame.time.Clock()
     # Появление победного экрана
-    winsc = CongratulationScreen(all_sprites, vertical_borders=vertical_borders, ship=ship)
+    winsc = CongratulationScreen(all_sprites, vertical_borders=vertical_borders)
     # Новый курсор
     cursor = Cursor(cursor_group)
     # Основной цикл
@@ -1141,6 +1168,7 @@ def start_level_3(ship):
     ver_lines_1 = pygame.sprite.Group()
     ver_lines_2 = pygame.sprite.Group()
     ver_lines_3 = pygame.sprite.Group()
+    ver_lines_4 = pygame.sprite.Group()
     hor_lines = pygame.sprite.Group()
     enemy_bullets = pygame.sprite.Group()
     bullets = pygame.sprite.Group()
@@ -1149,6 +1177,7 @@ def start_level_3(ship):
     running = True
     end_on = False
     game_on = False
+    create_ufo_flag = False
     # Переменные
     count = 0
     score = 0
@@ -1179,6 +1208,7 @@ def start_level_3(ship):
     ver_line_1 = VerticalBorders(ver_lines_1, y=-400)
     ver_line_2 = VerticalBorders(ver_lines_2, y=180)
     ver_line_3 = VerticalBorders(ver_lines_3, y=70)
+    ver_line_4 = VerticalBorders(ver_lines_4, y=HEIGHT)
     hor_line_1 = HorizonalBorders(hor_lines, x=960)
     hor_line_2 = HorizonalBorders(hor_lines, x=-60)
     horizontal_border_1 = HorizonalBorders(all_sprites, direction='right')
@@ -1186,10 +1216,11 @@ def start_level_3(ship):
     enemyship = BigEnemyShip(all_sprites, border_1=ver_lines_1, border_2=ver_lines_2,
                              borders=hor_lines, bullets=bullets, ship=new_ship)
     # Вражеские юниты
-    ufo_1 = UFO(all_sprites, border=ver_lines_3, x=60, y=-200, bullets=bullets)
-    ufo_2 = UFO(all_sprites, border=ver_lines_3, x=300, y=-200, bullets=bullets)
-    ufo_3 = UFO(all_sprites, border=ver_lines_3, x=600, y=-200, bullets=bullets)
-    ufo_4 = UFO(all_sprites, border=ver_lines_3, x=840, y=-200, bullets=bullets)
+    ufo_1 = UFO(all_sprites, border=ver_lines_3, x=-200, y=-200, bullets=bullets)
+    ufo_2 = UFO(all_sprites, border=ver_lines_3, x=-200, y=-200, bullets=bullets)
+    ufo_3 = UFO(all_sprites, border=ver_lines_3, x=-200, y=-200, bullets=bullets)
+    ufo_4 = UFO(all_sprites, border=ver_lines_3, x=-200, y=-200, bullets=bullets)
+    create_ufo_flag = False
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -1232,6 +1263,12 @@ def start_level_3(ship):
                     enemy_bullets.add(bullet_5)
                 enemyship.stage_2()
             elif enemyship.stage3:
+                if not create_ufo_flag:
+                    ufo_1.rect.x = 60
+                    ufo_2.rect.x = 300
+                    ufo_3.rect.x = 600
+                    ufo_4.rect.x = 840
+                    create_ufo_flag = True
                 ufo_1.move()
                 ufo_2.move()
                 ufo_3.move()
@@ -1267,6 +1304,8 @@ def start_level_3(ship):
                 Ship.death_sound.play()
                 running = False
                 end_on = True
+        if enemyship.death:
+            endwinscreen = EndWinScreen(all_sprites, vertical_borders=ver_lines_4)
         if game_on and x2 + WIDTH > 0:
             x1 -= speed
             x2 -= speed
