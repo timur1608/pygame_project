@@ -96,7 +96,6 @@ class Ship(pygame.sprite.Sprite):
         self.group = group
 
         self.health = 2
-        self.damage = 1
         self.shield = 0
 
     def move(self, args):
@@ -133,7 +132,7 @@ class Ship(pygame.sprite.Sprite):
 
     def drawhp(self):
         for _ in range(self.health):
-            pygame.draw.rect(screen, 'green', (800 + self.count, 450, 20, 20))
+            pygame.draw.rect(screen, 'green', (760 + self.count, 450, 20, 20))
             self.count += 20
         self.count = 0
 
@@ -315,7 +314,7 @@ class UFO(pygame.sprite.Sprite):
         self.death = False
         self.rect.x = x
         self.rect.y = y
-        self.health = 15
+        self.health = 1
         self.border = border
         self.vy = 4
         self.stop = False
@@ -383,7 +382,6 @@ class BigEnemyShip(pygame.sprite.Sprite):
 
     def __init__(self, *group, border_1=None, border_2=None, borders=None, bullets=None, ship=None):
         super().__init__(*group)
-        BigEnemyShip.sound_of_flying.play(0)
         self.ship = ship
         self.group = group
         self.bullets = bullets
@@ -456,8 +454,18 @@ class BigEnemyShip(pygame.sprite.Sprite):
         else:
             old_rect_x = self.rect.x
             self.rect.x = self.ship.rect.x - 100
-            if self.rect.x > old_rect_x:
-                pass
+            if self.rect.x > old_rect_x and self.iter != 20:
+                self.iter += 0.2
+            elif self.rect.x < old_rect_x and self.iter != -20:
+                self.iter -= 0.2
+            else:
+                self.iter = 0
+            if not pygame.sprite.spritecollideany(self, self.border):
+                if self.iter % 5 == 0 and self.iter >= 0:
+                    self.image = BigEnemyShip.images[::-1][4:][self.iter // 5]
+                    self.rotate(180, orig_image=self.image)
+                elif self.iter % 5 == 0 and self.iter < 0:
+                    self.image = BigEnemyShip.images[4:][-self.iter // 5]
 
     def rotate(self, angle, orig_image=None):
         self.orig_center = self.rect.center
@@ -608,7 +616,7 @@ class GameOverScreen(pygame.sprite.Sprite):
 
 
 class CongratulationScreen(pygame.sprite.Sprite):
-    image = load_image('Background\maxresdefault.jpg')
+    image = load_image(r'Background\maxresdefault.jpg')
     count = 2
     level = 1
 
@@ -622,17 +630,6 @@ class CongratulationScreen(pygame.sprite.Sprite):
         self.rect.y = 0 - HEIGHT
         self.ship = ship
         self.count = CongratulationScreen.count
-        strings = [f"Поздравляю, вы прошли {CongratulationScreen.level} уровень.",
-                   f'У вас есть {CongratulationScreen.count} очков умений для улучшения корабля']
-        skills = [f'Здоровье: {self.ship.health}', f'Наличие щита: {self.ship.shield}',
-                  f'Скорость снаряда: {Bullet.speed}']
-        font = pygame.font.SysFont('comicsansms', 30)
-        for i, j in enumerate(strings):
-            string = font.render(j, True, pygame.Color('#C0C0C0'))
-            self.image.blit(string, (100, 125 + i * 30))
-        for i, j in enumerate(skills):
-            string = font.render(j, True, pygame.Color('#C0C0C0'))
-            self.image.blit(string, (100, 190 + i * 30))
 
     def update(self):
         if not pygame.sprite.spritecollideany(self, self.vertical_borders):
@@ -808,7 +805,7 @@ def start_level_1():
                 if 1 - (time - first_time) // 1000 == 0:
                     win = True
             screen.blit(text, (x2, 0))
-            screen.blit(health_ship, (650, 435))
+            screen.blit(health_ship, (600, 435))
             screen.blit(health_base, (5, 90))
             ship.drawhp()
             base.drawhp()
@@ -925,11 +922,21 @@ def win_screen(ship):
                         elif level == '3':
                             start_level_3(ship)
                         return
-
         manager.update(time_delta)
         all_sprites.draw(screen)
-        if not winsc.stop:
-            all_sprites.update()
+        if winsc.stop:
+            strings = [f"Поздравляю, вы прошли {CongratulationScreen.level} уровень.",
+                       f'У вас есть {winsc.count} очков умений для улучшения корабля']
+            skills = [f'Здоровье: {ship.health}', f'Наличие щита: {ship.shield}',
+                      f'Скорость снаряда: {Bullet.speed}']
+            font = pygame.font.SysFont('comicsansms', 30)
+            for i, j in enumerate(strings):
+                string = font.render(j, True, pygame.Color('#C0C0C0'))
+                screen.blit(string, (100, 125 + i * 30))
+            for i, j in enumerate(skills):
+                string = font.render(j, True, pygame.Color('#C0C0C0'))
+                screen.blit(string, (100, 190 + i * 30))
+        all_sprites.update()
         manager.draw_ui(screen)
         cursor_group.draw(screen)
         pygame.display.flip()
@@ -1098,7 +1105,7 @@ def start_level_2(ship):
         if game_on and x2 + WIDTH > 0:
             x1 -= speed
             x2 -= speed
-        screen.blit(text_1, (650, 435))
+        screen.blit(text_1, (600, 435))
         screen.blit(text_2, (x1, 20))
         screen.blit(text_3, (x2, 20))
         if not game_on:
@@ -1142,9 +1149,13 @@ def start_level_3(ship):
     f = False
     running = True
     end_on = False
+    game_on = False
     count = 0
     # Переменные
     clock = pygame.time.Clock()
+    speed = 0
+    x1 = 25
+    x2 = 250
     # Корабль
     new_ship = Ship(all_sprites)
     new_ship.health = ship.health
@@ -1154,6 +1165,14 @@ def start_level_3(ship):
     if new_ship.shield:
         f = True
         shield = Shield(all_sprites)
+    # Текст
+    text = ['Здоровье: ', 'Уровень 3', 'Уничтожьте главный корабль',
+            'Нажмите Space, чтобы продолжить']
+    font = pygame.font.SysFont('comicsansms', 30)
+    text_1 = font.render(text[0], True, pygame.Color('#C0C0C0'))
+    text_2 = font.render(text[1], True, pygame.Color('#C0C0C0'))
+    text_3 = font.render(text[2], True, pygame.Color('#C0C0C0'))
+    text_4 = font.render(text[3], True, pygame.Color('#C0C0C0'))
     # Спрайты
     fon = pygame.transform.scale(load_image('level_3/background.jpg'), (WIDTH, HEIGHT))
     # Границы для вражеского корабля
@@ -1189,48 +1208,63 @@ def start_level_3(ship):
                 bullets.add(bullet_2)
             if new_ship.health == 1:
                 new_ship.image = Ship.image_damaged_ship
+            if pygame.key.get_pressed()[pygame.K_SPACE] and not game_on:
+                BigEnemyShip.sound_of_flying.play(0)
+                start_time = pygame.time.get_ticks()
+                game_on = True
+
+                speed = 3
+        if game_on:
+            if enemyship.stage1:
+                enemyship.stage_1()
+            elif enemyship.stage2:
+                count += 1
+                if count % 15 == 0:
+                    bullet_3 = BulletOfBigEnemyShip(all_sprites,
+                                                    pos=(enemyship.rect.x, enemyship.rect.y),
+                                                    direction='left')
+                    bullet_4 = BulletOfBigEnemyShip(all_sprites,
+                                                    pos=(enemyship.rect.x, enemyship.rect.y),
+                                                    direction='right')
+                    bullet_5 = BulletOfBigEnemyShip(all_sprites,
+                                                    pos=(enemyship.rect.x, enemyship.rect.y),
+                                                    direction='middle')
+                    enemy_bullets.add(bullet_3)
+                    enemy_bullets.add(bullet_4)
+                    enemy_bullets.add(bullet_5)
+                enemyship.stage_2()
+            elif enemyship.stage3:
+                ufo_1.move()
+                ufo_2.move()
+                ufo_3.move()
+                ufo_4.move()
+            if ufo_1.stop and ufo_1.count % 60 == 0 and ufo_2.stop and ufo_3.stop and ufo_4.stop:
+                for i in [ufo_1, ufo_2, ufo_3, ufo_4]:
+                    if not i.death:
+                        for j in [270, 315, 0, 45, 90]:
+                            bullet_6 = BulletOfEnemy(all_sprites, angle=j, enemy=i)
+                            bullet_6.rotate()
+                            enemy_bullets.add(bullet_6)
+                ufo_1.count += 1
+            else:
+                ufo_1.count += 1
+            if ufo_1.death and ufo_2.death and ufo_3.death and ufo_4.death:
+                enemyship.stage_3()
+            if new_ship.death:
+                Ship.death_sound.play()
+                running = False
+                end_on = True
+        if game_on and x2 + WIDTH > 0:
+            x1 -= speed
+            x2 -= speed
         screen.blit(fon, (0, 0))
+        screen.blit(text_1, (600, 435))
+        screen.blit(text_2, (x1, 20))
+        screen.blit(text_3, (x2, 20))
+        if not game_on:
+            screen.blit(text_4, (200, 250))
+        new_ship.drawhp()
         all_sprites.draw(screen)
-        if enemyship.stage1:
-            enemyship.stage_1()
-        elif enemyship.stage2:
-            count += 1
-            if count % 15 == 0:
-                bullet_3 = BulletOfBigEnemyShip(all_sprites,
-                                                pos=(enemyship.rect.x, enemyship.rect.y),
-                                                direction='left')
-                bullet_4 = BulletOfBigEnemyShip(all_sprites,
-                                                pos=(enemyship.rect.x, enemyship.rect.y),
-                                                direction='right')
-                bullet_5 = BulletOfBigEnemyShip(all_sprites,
-                                                pos=(enemyship.rect.x, enemyship.rect.y),
-                                                direction='middle')
-                enemy_bullets.add(bullet_3)
-                enemy_bullets.add(bullet_4)
-                enemy_bullets.add(bullet_5)
-            enemyship.stage_2()
-        elif enemyship.stage3:
-            ufo_1.move()
-            ufo_2.move()
-            ufo_3.move()
-            ufo_4.move()
-        if ufo_1.stop and ufo_1.count % 60 == 0 and ufo_2.stop and ufo_3.stop and ufo_4.stop:
-            for i in [ufo_1, ufo_2, ufo_3, ufo_4]:
-                if not i.death:
-                    for j in [270, 315, 0, 45, 90]:
-                        bullet_6 = BulletOfEnemy(all_sprites, angle=j, enemy=i)
-                        bullet_6.rotate()
-                        enemy_bullets.add(bullet_6)
-            ufo_1.count += 1
-        else:
-            ufo_1.count += 1
-        if ufo_1.death and ufo_2.death and ufo_3.death and ufo_4.death:
-            enemyship.stage_3()
-        if new_ship.death:
-            Ship.death_sound.play()
-            running = False
-            end_on = True
-        ship.drawhp()
         all_sprites.update()
         pygame.display.flip()
         clock.tick(FPS)
