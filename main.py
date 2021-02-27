@@ -24,12 +24,24 @@ def load_level():
         return reader
 
 
+def reset_level():
+    with open('level.txt', 'w') as file:
+        file.write('1')
+
+
 def next_level(current_level):
     with open('level.txt', 'w') as file:
         if current_level == 3:
             file.write('1')
         else:
             file.write(str(current_level + 1))
+
+
+def reset_ablitities():
+    with open('abilities.txt', 'w') as file:
+        file.write(f'health = {2}\n')
+        file.write(f'shield = {0}\n')
+        file.write(f'speed_bullet = {8}\n')
 
 
 def load_abilities():
@@ -395,8 +407,8 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.border_2 = border_2
         self.speed = 4
         self.rect.x = 900
-        self.health_1 = 100
-        self.health_2 = 50
+        self.health_1 = 1
+        self.health_2 = 1
         self.rect.y = 400
         self.stop = False
         self.left = False
@@ -505,6 +517,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
                 self.choice = 0
                 self.right = True
                 self.left = False
+
     def update(self) -> None:
         if pygame.sprite.collide_mask(self, self.ship):
             self.ship.health -= 1
@@ -661,7 +674,7 @@ class EndWinScreen(pygame.sprite.Sprite):
 
     def update(self):
         if not pygame.sprite.spritecollideany(self, self.vertical_borders):
-            self.rect = self.rect.move(0, 10)
+            self.rect = self.rect.move(0, 4)
 
 
 class Cursor(pygame.sprite.Sprite):
@@ -1305,7 +1318,8 @@ def start_level_3(ship):
                 running = False
                 end_on = True
         if enemyship.death:
-            endwinscreen = EndWinScreen(all_sprites, vertical_borders=ver_lines_4)
+            congratulations()
+            return
         if game_on and x2 + WIDTH > 0:
             x1 -= speed
             x2 -= speed
@@ -1332,6 +1346,35 @@ def start_level_3(ship):
                 start_level_1()
                 return
         screen.blit(fon, (0, 0))
+        all_sprites.draw(screen)
+        all_sprites.update()
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def congratulations():
+    # Откат файлов
+    reset_level()
+    reset_ablitities()
+    # Музыка
+    pygame.mixer.music.load('music/final.mp3')
+    pygame.mixer.music.play()
+    # Переменные
+    clock = pygame.time.Clock()
+    # Группы спрайтов
+    all_sprites = pygame.sprite.Group()
+    vertical_borders = pygame.sprite.Group()
+    vertical_border = VerticalBorders(all_sprites, direction='down')
+    vertical_borders.add(vertical_border)
+    end_screen = EndWinScreen(all_sprites, vertical_borders=vertical_borders)
+    running = True
+    # Шрифт
+    font = pygame.font.SysFont('comicsansms', 30)
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        intro_text = f'Поздравляю вы прошли игру за время'
         all_sprites.draw(screen)
         all_sprites.update()
         pygame.display.flip()
