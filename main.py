@@ -9,13 +9,18 @@ import math
 pygame.init()
 size = WIDTH, HEIGHT = 900, 500
 screen = pygame.display.set_mode((size))
-pygame.display.set_caption('pre_alpha_project')
+pygame.display.set_caption('Lost In Space')
 FPS = 50
 
 
 def terminate():
     pygame.quit()
     sys.exit()
+
+
+def save_achievement(total_time):
+    with open('ach_board.txt', 'a') as file:
+        file.write(f'Игрок - {total_time} с\n')
 
 
 def load_level():
@@ -55,6 +60,17 @@ def update_abilities(ship):
         file.write(f'health = {ship.health}\n')
         file.write(f'shield = {ship.shield}\n')
         file.write(f'speed_bullet = {Bullet.speed}\n')
+
+
+def sort_list_of_achievements():
+    file = open('ach_board.txt', 'r')
+    reader = file.read().splitlines()
+    reader = sorted(reader, key=lambda x: int(x.split()[-2]))
+    file.close()
+    file = open('ach_board.txt', 'w')
+    for i in reader:
+        file.write(f'{i}\n')
+    file.close()
 
 
 def load_image(name, colorkey=None):
@@ -407,8 +423,8 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.border_2 = border_2
         self.speed = 4
         self.rect.x = 900
-        self.health_1 = 1
-        self.health_2 = 1
+        self.health_1 = 100
+        self.health_2 = 50
         self.rect.y = 400
         self.stop = False
         self.left = False
@@ -671,10 +687,13 @@ class EndWinScreen(pygame.sprite.Sprite):
         self.image = EndWinScreen.image
         self.rect = self.image.get_rect()
         self.rect.y = 0 - HEIGHT
+        self.stop = False
 
     def update(self):
         if not pygame.sprite.spritecollideany(self, self.vertical_borders):
             self.rect = self.rect.move(0, 4)
+        else:
+            self.stop = True
 
 
 class Cursor(pygame.sprite.Sprite):
@@ -841,7 +860,7 @@ def start_level_1():
                 timer = f'Осталось еще продержаться: {40 - (time - first_time) // 1000}'
                 timer = font.render(timer, True, pygame.Color('#C0C0C0'))
                 screen.blit(timer, (x3, 0))
-                if 1 - (time - first_time) // 1000 == 0:
+                if 40 - (time - first_time) // 1000 == 0:
                     win = True
             screen.blit(text, (x2, 0))
             screen.blit(health_ship, (600, 435))
@@ -1192,6 +1211,7 @@ def start_level_3(ship):
     game_on = False
     create_ufo_flag = False
     # Переменные
+    start_time = 0
     count = 0
     score = 0
     clock = pygame.time.Clock()
@@ -1256,6 +1276,7 @@ def start_level_3(ship):
                 BigEnemyShip.sound_of_flying.play(0)
                 game_on = True
                 speed = 3
+                start_time = pygame.time.get_ticks()
         if game_on:
             if enemyship.stage1:
                 enemyship.stage_1()
@@ -1356,6 +1377,8 @@ def congratulations():
     # Откат файлов
     reset_level()
     reset_ablitities()
+    save_achievement(pygame.time.get_ticks() // 1000)
+    sort_list_of_achievements()
     # Музыка
     pygame.mixer.music.load('music/final.mp3')
     pygame.mixer.music.play()
@@ -1370,12 +1393,27 @@ def congratulations():
     running = True
     # Шрифт
     font = pygame.font.SysFont('comicsansms', 30)
+    # Текст
+    intro_text = [f'Поздравляю вы прошли игру за {pygame.time.get_ticks() // 1000} секунд', 'Доска достижений']
+    ach_text = list()
+    text = font.render(intro_text[0], True, pygame.Color('#C0C0C0'))
+    text_2 = font.render(intro_text[1], True, pygame.Color('#C0C0C0'))
+    # Доска достижений
+    with open('ach_board.txt', 'r') as file:
+        reader = file.read().splitlines()
+        for i in reader:
+            ach_text.append(i)
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        intro_text = f'Поздравляю вы прошли игру за время'
         all_sprites.draw(screen)
+        if end_screen.stop:
+            screen.blit(text, (50, 50))
+            screen.blit(text_2, (60, 200))
+            for j, i in enumerate(ach_text):
+                text_3 = font.render(str(j + 1) + '.' + i, True, pygame.Color('#C0C0C0'))
+                screen.blit(text_3, (50, 250 + j * 30))
         all_sprites.update()
         pygame.display.flip()
         clock.tick(FPS)
