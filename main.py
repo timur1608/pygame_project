@@ -424,7 +424,7 @@ class BigEnemyShip(pygame.sprite.Sprite):
         self.speed = 4
         self.rect.x = 900
         self.health_1 = 100
-        self.health_2 = 50
+        self.health_2 = 40
         self.rect.y = 400
         self.stop = False
         self.left = False
